@@ -1,31 +1,20 @@
 // /app/api/itinerary/route.js
-import { Ollama } from 'ollama';
 import { getJson } from 'serpapi';
 
-// --- Initialize our clients ---
-const ollama = new Ollama();
+// --- Groq configuration ---
+// Make sure you have GROQ_API_KEY set in your `.env.local`
+// (this is the default env var name used by Groq Cloud)
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+
+if (!GROQ_API_KEY) {
+  console.warn(
+    'GROQ_API_KEY is not set. Itinerary generation via Groq will fail until this is configured.'
+  );
+}
+
 const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
 const SERPAPI_API_KEY = process.env.SERPAPI_API_KEY;
-
-// --- Helper: Convert Ollama stream to ReadableStream ---
-function ollamaStreamToReadableStream(stream) {
-  const encoder = new TextEncoder();
-  return new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const chunk of stream) {
-          if (chunk.message && chunk.message.content) {
-            controller.enqueue(encoder.encode(chunk.message.content));
-          }
-        }
-      } catch (e) {
-        controller.error(e);
-      } finally {
-        controller.close();
-      }
-    },
-  });
-}
 
 // --- Helper: Format seconds to hours/minutes ---
 function formatTravelTime(seconds) {
@@ -183,13 +172,79 @@ async function getDestinationInfo(destination, budget) {
       const bestTimeQuery = `when is the best time to visit ${destination}`;
       const [attractionsSearch, hotelsSearch, bestTimeSearch] = await Promise.all([
         getJson({ api_key: SERPAPI_API_KEY, q: attractionsQuery, gl: 'us', hl: 'en' }),
-        getJson({ api_key: SERPAPI_API_KEY, q: hotelsQuery, gl: 'us', hl: 'en', num: 6, tbm: 'lcl' }),
+        // Local results are very sensitive to geo context; provide `location` to improve consistency.
+        getJson({ api_key: SERPAPI_API_KEY, q: hotelsQuery, gl: 'us', hl: 'en', location: destination, num: 6, tbm: 'lcl' }),
         getJson({ api_key: SERPAPI_API_KEY, q: bestTimeQuery, gl: 'us', hl: 'en' }),
       ]);
       const highlights = attractionsSearch.knowledge_graph?.tourist_attractions?.map(a => a.name) || attractionsSearch.top_sights?.sights?.map(s => s.title) || [];
       let hotels = [];
-      if (hotelsSearch.local_results) {
-         hotels = hotelsSearch.local_results.slice(0, 6).map(h => ({ name: h.title, address: h.address, photo: h.thumbnail, rating: h.rating, link: h.website || h.link, }));
+      
+      // Try to get hotels from local_results first (best quality - has photos, ratings, addresses)
+      if (hotelsSearch?.local_results?.length) {
+        hotels = hotelsSearch.local_results.slice(0, 6).map(h => ({
+          name: String(h.title || h.name || 'Hotel').trim(),
+          address: String(h.address || h.vicinity || '').trim(),
+          photo: (h.thumbnail || h.thumbnail_image || h.image || null),
+          rating: (typeof h.rating === 'number') ? h.rating : null,
+          link: (h.website || h.link || null),
+        })).filter(h => h.name && h.name !== 'Hotel');
+      }
+
+      // Fallback 1: Try Google Maps search if local_results failed
+      if (hotels.length === 0) {
+        try {
+          const hotelsMaps = await getJson({
+            api_key: SERPAPI_API_KEY,
+            engine: 'google_maps',
+            q: `${budgetSearchTerm} ${destination}`,
+            type: 'search',
+          });
+
+          if (hotelsMaps?.local_results?.length) {
+            hotels = hotelsMaps.local_results.slice(0, 6).map(h => ({
+              name: String(h.title || h.name || 'Hotel').trim(),
+              address: String(h.address || h.vicinity || '').trim(),
+              photo: (h.thumbnail || h.thumbnail_image || h.image || null),
+              rating: (typeof h.rating === 'number') ? h.rating : null,
+              link: (h.website || h.link || null),
+            })).filter(h => h.name && h.name !== 'Hotel');
+          }
+        } catch (mapsError) {
+          console.warn('Google Maps hotel search failed:', mapsError.message);
+        }
+      }
+
+      // Fallback 2: Try a simpler query without tbm=lcl
+      if (hotels.length === 0) {
+        try {
+          const hotelsSimple = await getJson({
+            api_key: SERPAPI_API_KEY,
+            q: `hotels in ${destination}`,
+            gl: 'us',
+            hl: 'en',
+            location: destination,
+            num: 6,
+          });
+
+          if (hotelsSimple?.local_results?.length) {
+            hotels = hotelsSimple.local_results.slice(0, 6).map(h => ({
+              name: String(h.title || h.name || 'Hotel').trim(),
+              address: String(h.address || h.vicinity || '').trim(),
+              photo: (h.thumbnail || h.thumbnail_image || h.image || null),
+              rating: (typeof h.rating === 'number') ? h.rating : null,
+              link: (h.website || h.link || null),
+            })).filter(h => h.name && h.name !== 'Hotel');
+          }
+        } catch (simpleError) {
+          console.warn('Simple hotel search failed:', simpleError.message);
+        }
+      }
+
+      // Log what we found for debugging
+      if (hotels.length > 0) {
+        console.log(`✅ Found ${hotels.length} hotels for ${destination}:`, hotels.map(h => ({ name: h.name, hasPhoto: !!h.photo, hasLink: !!h.link })));
+      } else {
+        console.warn(`⚠️ No hotels found for ${destination} - tried multiple search methods`);
       }
       const bestTime = bestTimeSearch.answer_box?.snippet || bestTimeSearch.answer_box?.answer || (bestTimeSearch.organic_results && bestTimeSearch.organic_results[0].snippet) || "Varies by season.";
       return { highlights, hotels, bestTime };
@@ -345,18 +400,126 @@ export async function POST(request) {
     // --- **** END OF PROMPT FIX **** ---
 
 
-    // --- Call AI and Stream ---
+    // --- Call Groq with streaming to support Chain of Thoughts (CoT) feature ---
     try {
-      const responseStream = await ollama.chat({
-        model: 'llama3:latest',
-        messages: [{ role: 'user', content: prompt }],
-        stream: true,
+      if (!GROQ_API_KEY) {
+        return new Response(
+          JSON.stringify({
+            error:
+              'Missing GROQ_API_KEY. Please configure your Groq API key in .env.local.',
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const groqResponse = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${GROQ_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: GROQ_MODEL,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7,
+            stream: true, // Enable streaming for CoT feature
+          }),
+        }
+      );
+
+      if (!groqResponse.ok) {
+        let errorMessage = `Groq API error (status ${groqResponse.status})`;
+        try {
+          const errorBody = await groqResponse.json();
+          if (errorBody?.error?.message) {
+            errorMessage = `Groq API error: ${errorBody.error.message}`;
+          }
+        } catch {
+          // Fallback to raw text if JSON parsing fails
+          try {
+            const text = await groqResponse.text();
+            if (text) {
+              errorMessage = `Groq API error: ${text}`;
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        console.error(errorMessage);
+        return new Response(
+          JSON.stringify({ error: errorMessage }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Convert Groq's Server-Sent Events stream to a ReadableStream
+      const encoder = new TextEncoder();
+      const reader = groqResponse.body.getReader();
+      const decoder = new TextDecoder();
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            let buffer = '';
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                controller.close();
+                break;
+              }
+
+              // Decode the chunk
+              buffer += decoder.decode(value, { stream: true });
+              
+              // Process complete lines (SSE format: "data: {...}\n\n")
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6); // Remove "data: " prefix
+                  
+                  if (data === '[DONE]') {
+                    controller.close();
+                    return;
+                  }
+
+                  try {
+                    const parsed = JSON.parse(data);
+                    // Extract content delta from Groq's streaming format
+                    const delta = parsed.choices?.[0]?.delta?.content || '';
+                    if (delta) {
+                      controller.enqueue(encoder.encode(delta));
+                    }
+                  } catch (e) {
+                    // Skip invalid JSON lines (like empty "data: " lines)
+                    continue;
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Stream processing error:', error);
+            controller.error(error);
+          }
+        },
       });
-      const readableStream = ollamaStreamToReadableStream(responseStream);
-      return new Response(readableStream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' }, });
+
+      return new Response(stream, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      });
     } catch (error) {
-      console.error('Itinerary streaming error:', error);
-      return new Response( JSON.stringify({ error: 'Failed to generate itinerary stream. Is Ollama running?' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      console.error('Itinerary generation error (Groq):', error);
+      return new Response(
+        JSON.stringify({
+          error:
+            'Failed to generate itinerary using Groq API. Check your GROQ_API_KEY and network connectivity.',
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 }
 // --- END POST FUNCTION ---

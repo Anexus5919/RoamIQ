@@ -120,7 +120,25 @@ function ItineraryPageContent() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Try to surface a helpful error message from the API instead of a generic 500
+        let message = `HTTP error! status: ${response.status}`;
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            try {
+              const parsed = JSON.parse(errorText);
+              if (parsed?.error) {
+                message = parsed.error;
+              }
+            } catch {
+              // Not JSON, use raw text
+              message = errorText;
+            }
+          }
+        } catch {
+          // Ignore secondary errors and fall back to default message
+        }
+        throw new Error(message);
       }
 
       const reader = response.body.getReader();
