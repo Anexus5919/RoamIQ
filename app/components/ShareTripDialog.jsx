@@ -19,6 +19,7 @@ import { shareUrlFor } from '@/lib/trip-share';
 export default function ShareTripDialog({ trip, onClose }) {
   const [url, setUrl] = useState('');
   const [hasProse, setHasProse] = useState(true);
+  const [isLocal, setIsLocal] = useState(false);
   const [dataUrl, setDataUrl] = useState('');
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -28,10 +29,11 @@ export default function ShareTripDialog({ trip, onClose }) {
 
     (async () => {
       try {
-        const { url: link, prose } = await shareUrlFor(trip);
+        const { url: link, prose, local } = await shareUrlFor(trip);
         if (cancelled) return;
         setUrl(link);
         setHasProse(prose);
+        setIsLocal(local);
 
         const image = await QRCode.toDataURL(link, {
           width: 320,
@@ -111,6 +113,16 @@ export default function ShareTripDialog({ trip, onClose }) {
                 />
               </div>
               <Badge variant="secondary">{url.length} characters, no server involved</Badge>
+              {isLocal && (
+                <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+                  <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-destructive leading-relaxed">
+                    This code points at localhost, so it will not open on another device. Set
+                    NEXT_PUBLIC_SHARE_ORIGIN to this machine&apos;s network address or your
+                    deployed site, then restart the dev server.
+                  </p>
+                </div>
+              )}
               {!hasProse && (
                 <p className="text-xs text-muted-foreground text-center max-w-xs">
                   The stop descriptions were left out to keep this scannable. Your friend still
