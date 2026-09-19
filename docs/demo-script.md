@@ -3,6 +3,24 @@
 Target length **2:50**. Narration is 436 words at 154 words per minute.
 Subtitles with matching timecodes are in `demo-subtitles.srt`, ready to import.
 
+**Rules that govern this video**, quoted from the hackathon Rules page, section
+"Demo-video standard":
+
+> The demo must be a screen recording under three minutes that shows the project
+> running locally and its core functionality working. The link must open in an
+> incognito or private window. Narration is optional, and the recording may be
+> sped up to stay within the time limit.
+
+Three consequences:
+
+1. **Under three minutes is a hard limit.** 2:50 leaves ten seconds of margin.
+2. **Record on `localhost:3000`, not on Vercel.** "Running locally" is stated
+   three times across the Rules, the landing page and the FAQ. Localhost also
+   keeps the disk cache working, so retakes cost no search credits, and
+   geolocation still works because localhost counts as a secure context.
+3. **Test the finished video link in a private window** before submitting. An
+   unlisted video with the wrong sharing permission fails the validity check.
+
 Every figure below is what the app actually produced on a live run of
 **Mumbai to Goa, 10 to 14 November 2026, mid-range, interests: beaches, food,
 heritage**. Use that exact input and the numbers on screen will match.
@@ -19,7 +37,8 @@ heritage**. Use that exact input and the numbers on screen will match.
 3. Clear `localStorage` so **My Trips** starts empty, otherwise old trips
    appear in the history shot.
 4. Have a second device ready with the camera open for the QR shot.
-5. Record at 1920x1080. Browser at 100% zoom, bookmarks bar hidden.
+5. Record at 1920x1080 on **localhost:3000**. Browser at 100% zoom, bookmarks
+   bar hidden.
 6. Generation takes about **10 seconds warm**, 18 cold. Speed that shot up.
 
 The rules allow speeding up footage. Run the form-filling and generation waits
