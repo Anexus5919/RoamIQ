@@ -3,10 +3,10 @@ import { Calendar, Clock, Sparkles, Brain } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Separator } from './ui/separator';
 
-export default function ItineraryDisplay({ itinerary }) {
+export default function ItineraryDisplay({ itinerary, children }) {
   if (!itinerary) return null;
 
-  const { destinationName, destinationSummary, thoughtProcess, days } = itinerary;
+  const { destinationName, destinationSummary, thoughtProcess } = itinerary;
 
   return (
     <Card className="shadow-lg">
@@ -55,48 +55,8 @@ export default function ItineraryDisplay({ itinerary }) {
 
         <Separator />
 
-        <div className="space-y-6">
-          {days && Array.isArray(days) && days.map((day, index) => (
-            <Card key={`${day.day}-${index}`} className="overflow-hidden">
-              <CardHeader className="bg-primary/5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold">
-                    {day.day !== undefined ? day.day : index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <CardTitle className="text-xl">{day.title}</CardTitle>
-                    {day.date && (
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <Calendar className="h-3 w-3" />
-                        {day.date}
-                      </CardDescription>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {day.activities && Array.isArray(day.activities) && day.activities.map((activity, activityIndex) => (
-                    <div key={`${day.day}-${activityIndex}`} className="flex gap-4 group">
-                      <div className="flex flex-col items-center">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                          <Clock className="h-4 w-4 text-primary" />
-                        </div>
-                        {activityIndex < day.activities.length - 1 && (
-                          <div className="w-0.5 h-full bg-border mt-2"></div>
-                        )}
-                      </div>
-                      <div className="flex-1 pb-4">
-                        <div className="font-semibold text-sm text-primary mb-1">{activity.time}</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{activity.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {children}
+
       </CardContent>
     </Card>
   );

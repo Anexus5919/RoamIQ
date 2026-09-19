@@ -12,8 +12,82 @@ import LocalDining from '../components/LocalDining';
 import TravelAdvisory from '../components/TravelAdvisory';
 import ChainOfThoughtDisplay from '../components/ChainOfThoughtDisplay';
 import GlobeDisplay from '../components/GlobeDisplay';
+import DayRoutePlanner from '../components/DayRoutePlanner';
+import HotelAnchorPicker from '../components/HotelAnchorPicker';
+import TripApproval from '../components/TripApproval';
 import { Card, CardContent } from '../components/ui/card';
 import { useItinerary } from '../context/ItineraryContext';
+import { planDayRoutes } from '@/lib/itinerary-planner';
+import { saveTrip, updateTripDays } from '@/lib/trip-store';
+
+/** Give every stop a stable id so drag and drop can track it across reorders. */
+function stopId(dayNumber, name, index) {
+  const slug = String(name || 'stop')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `d${dayNumber}-${index}-${slug}`;
+}
+
+const DEFAULT_TIMES = ['Morning', 'Afternoon', 'Evening', 'Night'];
+
+/**
+ * Merge the model's prose onto the planner's route.
+ *
+ * Notes are keyed by place name rather than position, so they stay attached to
+ * the right stop after the traveller drags things around.
+ */
+function buildDays(liveData, plan) {
+  const notes = new Map((plan?.stopNotes || []).map((n) => [n.name, n]));
+  const titles = new Map((plan?.dayTitles || []).map((t) => [t.day, t.title]));
+
+  return (liveData?.plannedDays || []).map((day) => ({
+    ...day,
+    date: liveData?.dates?.[day.day] || null,
+    title: titles.get(day.day) || `Day ${day.day}`,
+    stops: (day.stops || []).map((stop, index) => {
+      const note = notes.get(stop.name);
+      return {
+        ...stop,
+        id: stop.id || stopId(day.day, stop.name, index),
+        time: note?.time || DEFAULT_TIMES[index] || 'Later',
+        description: note?.description || stop.description || '',
+        status: stop.status || 'pending',
+      };
+    }),
+  }));
+}
+
+/** Re-cluster the whole trip around a new hotel, keeping the model's prose. */
+function replanAroundAnchor(itinerary, anchor) {
+  const dayCount = itinerary.plannedDays?.length || 1;
+  const replanned = planDayRoutes({
+    places: itinerary.attractions || [],
+    dayCount,
+    anchor: anchor.coords,
+    anchorName: anchor.name,
+  });
+
+  const notes = new Map(
+    (itinerary.days || []).flatMap((d) => (d.stops || []).map((s) => [s.name, s]))
+  );
+
+  return replanned.map((day) => ({
+    ...day,
+    date: itinerary.dates?.[day.day] || null,
+    title: itinerary.days?.find((d) => d.day === day.day)?.title || `Day ${day.day}`,
+    stops: (day.stops || []).map((stop, index) => {
+      const previous = notes.get(stop.name);
+      return {
+        ...stop,
+        id: previous?.id || stopId(day.day, stop.name, index),
+        time: DEFAULT_TIMES[index] || 'Later',
+        description: previous?.description || '',
+        status: previous?.status || 'pending',
+      };
+    }),
+  }));
+}
 
 // Helper function to extract JSON with proper brace balancing
 function extractJson(text) {
@@ -91,6 +165,48 @@ function ItineraryPageContent() {
   } = useItinerary();
 
   const [layoutState, setLayoutState] = useState('loading');
+  const [editable, setEditable] = useState(false);
+  const [approved, setApproved] = useState(false);
+  const [savedId, setSavedId] = useState(null);
+
+  const anchor = itinerary?.anchor || null;
+
+  // Re-anchoring re-clusters the whole trip, because which places belong on
+  // the same day depends entirely on where the traveller sleeps.
+  const handleAnchorChange = (nextAnchor) => {
+    setItinerary({
+      ...itinerary,
+      anchor: nextAnchor,
+      days: replanAroundAnchor(itinerary, nextAnchor),
+    });
+    if (approved) setApproved(false);
+  };
+
+  const handleDaysChange = (days) => setItinerary({ ...itinerary, days });
+
+  const handleApprove = () => {
+    const record = saveTrip({
+      id: savedId,
+      destinationName: itinerary.destinationName,
+      fromName: itinerary.fromName,
+      dates: itinerary.dates,
+      anchor: itinerary.anchor,
+      days: itinerary.days,
+      destinationSummary: itinerary.destinationSummary,
+    });
+    setSavedId(record.id);
+    setApproved(true);
+    setEditable(false);
+  };
+
+  const handleStatusChange = (stop, status) => {
+    const days = (itinerary.days || []).map((day) => ({
+      ...day,
+      stops: (day.stops || []).map((s) => (s.id === stop.id ? { ...s, status } : s)),
+    }));
+    setItinerary({ ...itinerary, days });
+    if (savedId) updateTripDays(savedId, days);
+  };
 
   // Check if we have form data to process
   useEffect(() => {
@@ -181,7 +297,7 @@ function ItineraryPageContent() {
 
           buffer = buffer.slice(delimiterIndex + STREAM_DELIMITER.length);
 
-          setItinerary({ ...liveData, days: [] });
+          setItinerary({ ...liveData, days: buildDays(liveData, null) });
           setLayoutState('results');
           setCotSteps((prevSteps) =>
             prevSteps.map((step) =>
@@ -201,7 +317,7 @@ function ItineraryPageContent() {
         if (extractedJson) {
           try {
             const plan = JSON.parse(extractedJson);
-            if (plan && Array.isArray(plan.days) && plan.days.length > 0) {
+            if (plan && Array.isArray(plan.stopNotes) && plan.stopNotes.length > 0) {
               setItinerary({
                 ...liveData,
                 destinationSummary: {
@@ -209,7 +325,7 @@ function ItineraryPageContent() {
                   bestTimeToVisit: plan.bestTimeToVisit || 'Varies by season.',
                 },
                 thoughtProcess: plan.thoughtProcess || '',
-                days: plan.days,
+                days: buildDays(liveData, plan),
               });
               setCotSteps(initialCotSteps.map((s) => ({ ...s, status: 'done' })));
               planParsed = true;
@@ -222,13 +338,13 @@ function ItineraryPageContent() {
         }
 
         // 3. Progress feedback while the days stream in.
-        const dayMatches = buffer.match(/"day":\s*(\d+)/g);
+        const dayMatches = buffer.match(/"name":\s*"/g);
         if (dayMatches && dayMatches.length > 0) {
-          const dayNum = dayMatches[dayMatches.length - 1].match(/\d+/)[0];
+          const written = dayMatches.length;
           setCotSteps((prevSteps) =>
             prevSteps.map((step) =>
               step.id === 'plan'
-                ? { ...step, text: `Building your plan... (Day ${dayNum})`, status: 'loading' }
+                ? { ...step, text: `Describing your stops... (${written})`, status: 'loading' }
                 : step
             )
           );
@@ -253,7 +369,7 @@ function ItineraryPageContent() {
           }
         }
 
-        if (plan && Array.isArray(plan.days) && plan.days.length > 0) {
+        if (plan && Array.isArray(plan.stopNotes) && plan.stopNotes.length > 0) {
           setItinerary({
             ...liveData,
             destinationSummary: {
@@ -261,7 +377,7 @@ function ItineraryPageContent() {
               bestTimeToVisit: plan.bestTimeToVisit || 'Varies by season.',
             },
             thoughtProcess: plan.thoughtProcess || '',
-            days: plan.days,
+            days: buildDays(liveData, plan),
           });
           console.log('✅ Complete itinerary loaded from final parse');
         } else {
@@ -374,7 +490,37 @@ function ItineraryPageContent() {
                       priceInsights={itinerary.priceInsights}
                     />
                   )}
-                  {itinerary.days && itinerary.days.length > 0 && <ItineraryDisplay itinerary={itinerary} />}
+                  {itinerary.destinationSummary?.hotelSuggestions?.length > 0 && (
+                    <HotelAnchorPicker
+                      hotels={itinerary.destinationSummary.hotelSuggestions}
+                      anchor={anchor}
+                      onAnchorChange={handleAnchorChange}
+                    />
+                  )}
+
+                  {itinerary.days?.length > 0 && (
+                    <>
+                      <TripApproval
+                        editable={editable}
+                        approved={approved}
+                        savedId={savedId}
+                        onEdit={() => setEditable(true)}
+                        onApprove={handleApprove}
+                        onSave={() => setEditable(false)}
+                      />
+
+                      <ItineraryDisplay itinerary={itinerary}>
+                        <DayRoutePlanner
+                          days={itinerary.days}
+                          anchor={anchor?.coords}
+                          anchorName={anchor?.name}
+                          editable={editable}
+                          onChange={handleDaysChange}
+                          onStatusChange={approved && !editable ? handleStatusChange : null}
+                        />
+                      </ItineraryDisplay>
+                    </>
+                  )}
                 </div>
                 <div className="lg:col-span-1 space-y-6">
                   {itinerary.destinationSummary?.hotelSuggestions && (

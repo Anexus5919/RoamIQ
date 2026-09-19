@@ -7,6 +7,7 @@ import {
   searchLocalPlaces,
   searchTravelNews,
 } from '@/lib/serpapi';
+import { planDayRoutes } from '@/lib/itinerary-planner';
 
 // --- Groq configuration ---
 // Make sure you have GROQ_API_KEY set in your `.env.local`
@@ -149,8 +150,10 @@ export async function POST(request) {
     searchFlights({ from, to: destination, outboundDate: startDate, returnDate: endDate, budget }),
     searchHotels({ destination, checkIn: startDate, checkOut: endDate, budget }),
     searchDirections({ from, to: destination, mode: 'driving' }),
-    searchLocalPlaces({ destination, query: 'best restaurants', limit: 6 }),
-    searchLocalPlaces({ destination, query: 'top tourist attractions', limit: 6 }),
+    searchLocalPlaces({ destination, query: 'best restaurants', limit: 8 }),
+    // google_local returns 20 rated places with coordinates for one credit,
+    // which is the pool the day planner clusters from.
+    searchLocalPlaces({ destination, query: 'top tourist attractions', limit: 20 }),
     searchTravelNews({ destination, limit: 4 }),
   ]);
 
@@ -183,6 +186,25 @@ export async function POST(request) {
     calculatedDays = 0;
   }
 
+  // --- Plan geographically sane day routes ---
+  // Day 1 is the arrival day and the final day is for departure, so sightseeing
+  // fills the days in between (with a floor of one for very short trips).
+  const sightseeingDays = Math.max(1, calculatedDays - 1);
+
+  // Routes are anchored on where the traveller sleeps. Before a hotel is
+  // chosen the top ranked one stands in, and the client re-plans when the
+  // traveller picks a different hotel or supplies their own.
+  const defaultAnchor = hotels?.[0]?.coords
+    ? { lat: hotels[0].coords.latitude ?? hotels[0].coords.lat, lon: hotels[0].coords.longitude ?? hotels[0].coords.lon }
+    : destCoords;
+
+  const plannedDays = planDayRoutes({
+    places: attractions || [],
+    dayCount: sightseeingDays,
+    anchor: defaultAnchor,
+    anchorName: hotels?.[0]?.name || destination,
+  });
+
   // --- The live-data payload the UI renders verbatim ---
   // The model is never asked to reproduce prices, ratings or hotel names: those
   // are real SerpApi values and are passed straight through to the client.
@@ -196,20 +218,39 @@ export async function POST(request) {
     flightRoute: flightData?.route || null,
     priceInsights: flightData?.priceInsights || null,
     destinationSummary: { hotelSuggestions: hotels || [] },
+    anchor: {
+      name: hotels?.[0]?.name || destination,
+      coords: defaultAnchor,
+      source: hotels?.[0]?.coords ? 'suggested-hotel' : 'city-centre',
+    },
+    plannedDays,
+    dates: allDates,
     dining: dining || [],
     attractions: attractions || [],
     news: news || [],
   };
 
-  // --- Compact, name-only context for the model ---
-  const attractionNames = (attractions || []).map((a) => a.name).filter(Boolean);
+  // --- Context for the model ---
+  // The route is already decided by the planner, so the model is asked only to
+  // name each day and describe each stop. It never chooses the order, which is
+  // what stops a morning in the north being followed by an afternoon in the
+  // south. Notes are keyed by place name so they survive the traveller
+  // reordering stops on the client.
+  const routeSummary = plannedDays
+    .map(
+      (d) =>
+        `Day ${d.day} (${d.totalKm} km round trip): ` +
+        d.stops.map((s) => `${s.name} [${s.leg.km} km ${s.leg.direction} of ${s.leg.fromName}]`).join(' then ')
+    )
+    .join('\n');
+
   const diningNames = (dining || []).map((d) => d.name).filter(Boolean);
-  const hotelNames = (hotels || []).map((h) => h.name).filter(Boolean);
+  const stopNames = plannedDays.flatMap((d) => d.stops.map((s) => s.name));
 
   const prompt = `
 CRITICAL: Your response must be PURE JSON only. Do NOT write any text before or after the JSON. Start with { and end with }.
 
-You are an expert travel planner. Build a detailed, practical day-by-day itinerary using the REAL places listed below. Do not invent landmarks that are not plausible for this destination.
+You are an expert travel writer. A route planner has ALREADY decided which places are visited on which day, grouping them so each day stays in one pocket of the city. Do not change the order, move places between days, or add places.
 
 --- TRIP ---
 From: ${from}
@@ -218,29 +259,29 @@ Dates: ${startDate} to ${endDate} (${numberOfDays})
 Budget: ${budget}
 Preferred transport: ${transportMode}
 Interests: ${interests.join(', ')}
+Staying at: ${hotels?.[0]?.name || destination}
 
---- REAL PLACES FOUND AT THE DESTINATION (use these by name) ---
-Attractions: ${attractionNames.join(', ') || 'none found — use well-known landmarks'}
-Restaurants: ${diningNames.join(', ') || 'none found — suggest local cuisine'}
-Hotels booked/considered: ${hotelNames.join(', ') || 'a suitable hotel'}
-Travel distance: ${travelAnalysis.distance}
+--- THE PLANNED ROUTE (fixed, do not reorder) ---
+${routeSummary || 'No route available.'}
+
+--- NEARBY RESTAURANTS YOU MAY MENTION ---
+${diningNames.join(', ') || 'none found, suggest local cuisine generally'}
 
 --- YOUR TASK ---
 Return JSON with exactly these keys:
 {
-  "bestTimeToVisit": "one or two sentences about the ideal season to visit ${destination}",
-  "thoughtProcess": "3-4 sentences explaining how you designed this itinerary for the stated interests and budget",
-  "days": [ ... ]
+  "bestTimeToVisit": "one or two sentences on the ideal season to visit ${destination}",
+  "thoughtProcess": "3-4 sentences on how this plan suits the stated interests and budget, mentioning that stops are grouped by area to cut travel time",
+  "dayTitles": [ { "day": 1, "title": "<short evocative title for that day's area>" } ],
+  "stopNotes": [ { "name": "<exact place name from the route above>", "time": "Morning", "description": "2-3 complete sentences" } ]
 }
 
-Rules for "days":
-- Generate EXACTLY ${calculatedDays > 0 ? calculatedDays : 'the required number of'} day objects.
-- Use these exact dates in order: ${JSON.stringify(allDates)}
-- Each day: { "day": <number>, "date": "<YYYY-MM-DD>", "title": "<short title>", "activities": [...] }
-- Each day MUST have exactly 3 activities with "time" of "Morning", "Afternoon" and "Evening".
-- Each activity: { "time": "...", "description": "2-3 complete sentences" }
-- Day 1 is the travel day from ${from}. The final day should wrap up and depart.
-- Weave the real attractions and restaurants above naturally across the days.
+Rules:
+- "dayTitles" must contain one entry for every day in the planned route.
+- "stopNotes" must contain one entry for EVERY place listed in the planned route, using the place name EXACTLY as written above.
+- These are the ${stopNames.length} place names you must cover: ${JSON.stringify(stopNames)}
+- "time" cycles Morning, Afternoon, Evening in the order stops appear within each day.
+- Each description must connect the place to these interests: ${interests.join(', ')}.
 - NEVER use "..." or placeholder text. Write every description in full.
 
 Respond with ONLY the JSON object. No comments, no trailing text.

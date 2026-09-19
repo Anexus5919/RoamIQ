@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Plane, Info, X, Github, Linkedin, Mail, PlusCircle } from 'lucide-react';
+import { Plane, Info, X, Github, Linkedin, Mail, PlusCircle, Luggage } from 'lucide-react';
 import ThemeSwitcher from './ThemeSwitcher';
 import { useItinerary } from '../context/ItineraryContext';
 import { Button } from './ui/button';
@@ -69,6 +69,18 @@ export default function Navbar() {
           </Link>
           
           <div className="flex flex-1 items-center justify-end space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className={`text-sm font-medium flex items-center gap-2 hover:bg-transparent ${buttonTextColor}`}
+            >
+              <Link href="/trips">
+                <Luggage className={`h-4 w-4 ${iconColor}`} />
+                <span className="hidden sm:inline-block">My Trips</span>
+              </Link>
+            </Button>
+
             {/* Show "Plan a New Trip" button only on itinerary page */}
             {isItineraryPage && (
               <Button
