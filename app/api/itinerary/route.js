@@ -306,6 +306,9 @@ Respond with ONLY the JSON object. No comments, no trailing text.
         model: GROQ_MODEL,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
+        // Twenty stop descriptions overrun the default completion cap and the
+        // JSON arrives truncated, so give the model room to finish.
+        max_tokens: 8000,
         stream: true,
       }),
     });
