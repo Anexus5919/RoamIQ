@@ -1,0 +1,267 @@
+1
+00:00:00,000 --> 00:00:01,129
+This is RoamIQ.
+
+2
+00:00:01,179 --> 00:00:03,879
+It plans trips from live search data,
+
+3
+00:00:03,929 --> 00:00:06,236
+not from a language model's memory.
+
+4
+00:00:06,286 --> 00:00:08,593
+Every price and every place you
+
+5
+00:00:08,643 --> 00:00:10,950
+are about to see is real.
+
+6
+00:00:11,000 --> 00:00:13,172
+Seven SerpApi engines power it.
+
+7
+00:00:13,222 --> 00:00:15,839
+Google Flights, Hotels, Maps Directions, Local,
+
+8
+00:00:15,889 --> 00:00:18,506
+News, Travel Explore, and Maps geocoding.
+
+9
+00:00:18,556 --> 00:00:20,728
+The model never invents a
+
+10
+00:00:20,778 --> 00:00:22,950
+price or a place name.
+
+11
+00:00:23,000 --> 00:00:24,150
+Mumbai to Goa.
+
+12
+00:00:24,200 --> 00:00:26,950
+Five days in November, mid range budget,
+
+13
+00:00:27,000 --> 00:00:29,750
+interests set to beaches, food and heritage.
+
+14
+00:00:29,800 --> 00:00:31,750
+Budget is not cosmetic here.
+
+15
+00:00:31,800 --> 00:00:34,950
+It changes how flights and hotels are ranked.
+
+16
+00:00:35,000 --> 00:00:36,402
+Watch the order.
+
+17
+00:00:36,452 --> 00:00:38,337
+Real data lands first.
+
+18
+00:00:38,387 --> 00:00:41,240
+The globe, the route, the flights.
+
+19
+00:00:41,290 --> 00:00:44,627
+Only then does the model start writing.
+
+20
+00:00:44,677 --> 00:00:47,531
+It is describing facts that were
+
+21
+00:00:47,581 --> 00:00:49,950
+already verified, not generating them.
+
+22
+00:00:50,000 --> 00:00:52,369
+Live fares from Google Flights.
+
+23
+00:00:52,419 --> 00:00:56,724
+IndiGo, thirteen thousand three hundred and thirty rupees, one
+
+24
+00:00:56,774 --> 00:01:01,079
+hour fifteen, non stop, forty three kilograms of carbon.
+
+25
+00:01:01,129 --> 00:01:04,950
+Price insights flag this route as currently high.
+
+26
+00:01:05,000 --> 00:01:06,914
+Real hotels at tonight's rates.
+
+27
+00:01:06,964 --> 00:01:09,664
+Rosetum Anjuna, two thousand and twenty eight
+
+28
+00:01:09,714 --> 00:01:12,414
+rupees a night, rated four point four.
+
+29
+00:01:12,464 --> 00:01:15,950
+Photos and star class come straight from Google Hotels.
+
+30
+00:01:16,000 --> 00:01:17,386
+Here is what matters.
+
+31
+00:01:17,436 --> 00:01:19,540
+Where you sleep anchors every route.
+
+32
+00:01:19,590 --> 00:01:22,412
+Pick a different hotel and the whole trip
+
+33
+00:01:22,462 --> 00:01:24,924
+re clusters instantly, with no API call.
+
+34
+00:01:24,974 --> 00:01:27,078
+Staying somewhere we did not suggest?
+
+35
+00:01:27,128 --> 00:01:29,950
+Check in and it uses your real coordinates.
+
+36
+00:01:30,000 --> 00:01:31,724
+Days are grouped by geography
+
+37
+00:01:31,774 --> 00:01:33,498
+before the model sees them.
+
+38
+00:01:33,548 --> 00:01:35,273
+Distances use the Haversine formula.
+
+39
+00:01:35,323 --> 00:01:36,692
+Clustering is capacitated greedy.
+
+40
+00:01:36,742 --> 00:01:39,531
+Seed each day with the furthest place, pull
+
+41
+00:01:39,581 --> 00:01:42,369
+in its nearest neighbours, and stop when the
+
+42
+00:01:42,419 --> 00:01:44,853
+next one is over twelve kilometres away.
+
+43
+00:01:44,903 --> 00:01:46,982
+Within a day, nearest neighbour ordering,
+
+44
+00:01:47,032 --> 00:01:48,756
+a greedy travelling salesman approximation.
+
+45
+00:01:48,806 --> 00:01:51,950
+K means gives unbalanced days, so I rejected it.
+
+46
+00:01:52,000 --> 00:01:55,150
+Old Goa comes in at a six hundred
+
+47
+00:01:55,200 --> 00:01:58,350
+metre spread, so it earns a Walkable badge.
+
+48
+00:01:58,400 --> 00:02:01,950
+Drag any stop and every distance recomputes on drop.
+
+49
+00:02:02,000 --> 00:02:03,950
+Pure arithmetic, no network call.
+
+50
+00:02:04,000 --> 00:02:05,321
+Approve to save it.
+
+51
+00:02:05,371 --> 00:02:08,407
+Get directions opens real Google Maps turn by turn.
+
+52
+00:02:08,457 --> 00:02:10,464
+I am here, then Done, next
+
+53
+00:02:10,514 --> 00:02:12,521
+stop, and it is struck off.
+
+54
+00:02:12,571 --> 00:02:14,236
+The trip completes itself when
+
+55
+00:02:14,286 --> 00:02:15,950
+the last stop is checked.
+
+56
+00:02:16,000 --> 00:02:18,187
+Every plan lands in history.
+
+57
+00:02:18,237 --> 00:02:21,766
+Filter by status, sort five ways, heart the
+
+58
+00:02:21,816 --> 00:02:24,897
+ones you loved and show favourites only.
+
+59
+00:02:24,947 --> 00:02:28,029
+Cancel, and it asks why, then keeps
+
+60
+00:02:28,079 --> 00:02:30,713
+the trip with the reason attached.
+
+61
+00:02:30,763 --> 00:02:32,950
+That is the accountability trail.
+
+62
+00:02:33,000 --> 00:02:35,120
+Share it as a QR code.
+
+63
+00:02:35,170 --> 00:02:38,376
+The whole plan compresses into a six hundred character
+
+64
+00:02:38,426 --> 00:02:41,631
+URL, so there is no database and no server.
+
+65
+00:02:41,681 --> 00:02:44,524
+Your friend scans it, and because they re
+
+66
+00:02:44,574 --> 00:02:47,418
+anchor on their own hotel, they get a
+
+67
+00:02:47,468 --> 00:02:49,950
+completely different route from the same places.
