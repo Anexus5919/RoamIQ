@@ -31,6 +31,7 @@ Every number a user sees — every fare, nightly rate, rating and review count �
 |---|---|
 | `google_flights` | Real fares, airlines, durations, stops and CO₂ estimates |
 | `google_flights_autocomplete` | Resolves typed city names to IATA airport codes |
+| `google_maps` | Geocodes origin and destination for the 3D globe |
 | `google_hotels` | Nightly rates, star class, ratings, deals and photos |
 | `google_maps_directions` | Road distance and drive time between origin and destination |
 | `google_local` | Highly rated restaurants and attractions at the destination |
@@ -89,7 +90,7 @@ All calls funnel through [`lib/serpapi.js`](lib/serpapi.js), which adds a TTL ca
 ### **Backend & APIs**
 - **SerpApi** - Live flights, hotels, directions, places, news and destinations
 - **Groq** - Hosted LLM inference (`openai/gpt-oss-120b`) with token streaming
-- **TomTom API** - Geocoding for the 3D globe
+- **TomTom API** - Optional geocoding fallback for the 3D globe
 - **OpenWeather API** - Weather forecasts
 
 ### **State Management & Utilities**
@@ -112,7 +113,7 @@ No local model server is needed — inference runs on Groq.
 ### **API Keys** (Required for full functionality)
 - **SerpApi Key** - [Get here](https://serpapi.com/) — the free plan includes 250 searches/month and covers every engine RoamIQ uses, flights and hotels included
 - **Groq API Key** - [Get here](https://console.groq.com/)
-- **TomTom API Key** - [Get here](https://developer.tomtom.com/)
+- **TomTom API Key** - [Get here](https://developer.tomtom.com/) — optional; only used as a geocoding fallback
 - **OpenWeather API Key** - [Get here](https://openweathermap.org/api)
 
 ---
@@ -147,6 +148,7 @@ GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=openai/gpt-oss-120b   # optional, this is the default
 
 # Geocoding for the 3D globe
+# Optional geocoding fallback (SerpApi handles this by default)
 TOMTOM_API_KEY=your_tomtom_api_key_here
 
 # Weather forecasts
@@ -244,7 +246,7 @@ RoamIQ/
 ┌─────────────────────────────────────────────────────────────┐
 │  API ROUTE (app/api/itinerary/route.js)                     │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ 1. Geocode locations (TomTom, India-biased)             ││
+│  │ 1. Geocode locations (google_maps, cached 30 days)      ││
 │  │ 2. Fetch live data from SerpApi, all in parallel:       ││
 │  │      google_flights · google_hotels                     ││
 │  │      google_maps_directions · google_local · news       ││
@@ -292,7 +294,7 @@ ItineraryContext
 
 #### **API Integration**
 - **SerpApi**: Flights, hotels, directions, restaurants, attractions, news and destination discovery
-- **TomTom API**: Geocoding for the 3D globe
+- **TomTom API**: Geocoding fallback only (SerpApi is primary)
 - **OpenWeather**: Real-time weather forecasts
 - **Groq**: Itinerary generation with token streaming
 
@@ -336,7 +338,7 @@ Create a `.env.local` file with these variables:
 |----------|-------------|----------|---------|
 | `SERPAPI_API_KEY` | SerpApi key — flights, hotels, places, news, discovery | ✅ Yes | - |
 | `GROQ_API_KEY` | Groq key for itinerary generation | ✅ Yes | - |
-| `TOMTOM_API_KEY` | TomTom API key for geocoding | ✅ Yes | - |
+| `TOMTOM_API_KEY` | Geocoding fallback if SerpApi returns nothing | ⚠️ Optional | - |
 | `OPENWEATHER_API_KEY` | OpenWeather API key for forecasts | ✅ Yes | - |
 | `GROQ_MODEL` | Override the Groq model | ⚠️ Optional | `openai/gpt-oss-120b` |
 

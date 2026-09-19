@@ -130,6 +130,7 @@ export default function Navbar() {
                     'Google Local',
                     'Google News',
                     'Travel Explore',
+                    'Maps Geocoding',
                   ].map((engine) => (
                     <Badge key={engine} variant="secondary">
                       {engine}
@@ -137,7 +138,7 @@ export default function Navbar() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Six SerpApi engines power the live data in this app.
+                  Seven SerpApi engines power the live data in this app.
                 </p>
               </div>
 

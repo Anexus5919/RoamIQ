@@ -1,5 +1,6 @@
 // /app/api/itinerary/route.js
 import {
+  geocodePlace,
   searchFlights,
   searchHotels,
   searchDirections,
@@ -25,11 +26,13 @@ const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
 // on this so real flights/hotels can render before the model has finished.
 export const STREAM_DELIMITER = '<<<ROAMIQ_LIVE_DATA_END>>>';
 
-// --- Helper: Get coordinates from TomTom ---
-// India is searched first: TomTom's global top hit for "Goa" is Goa in the
-// Philippines, which would otherwise plot the wrong point on the globe.
-async function getCoords(location) {
-  if (!TOMTOM_API_KEY) throw new Error('TomTom API key is missing');
+// --- Helper: Get coordinates for the globe ---
+// SerpApi's Google Maps engine is the primary source, cached for 30 days so a
+// given city costs one credit ever. TomTom stays as a free fallback: it is
+// queried India-first because its global top hit for "Goa" is Goa in the
+// Philippines, which would plot the wrong point on the globe.
+async function geocodeViaTomTom(location) {
+  if (!TOMTOM_API_KEY) return null;
 
   const lookup = async (countrySet) => {
     const url =
@@ -42,17 +45,22 @@ async function getCoords(location) {
   };
 
   try {
-    const indiaFirst = await lookup('IN');
-    if (indiaFirst) return indiaFirst;
-
-    const worldwide = await lookup(null);
-    if (worldwide) return worldwide;
-
-    throw new Error(`Location not found: ${location}`);
+    return (await lookup('IN')) || (await lookup(null));
   } catch (error) {
     console.error('TomTom Geocode Error:', error.message);
-    throw error;
+    return null;
   }
+}
+
+async function getCoords(location) {
+  const viaSerpApi = await geocodePlace(location);
+  if (viaSerpApi) return viaSerpApi;
+
+  console.warn(`[geocode] SerpApi had no coordinates for "${location}", falling back to TomTom`);
+  const viaTomTom = await geocodeViaTomTom(location);
+  if (viaTomTom) return viaTomTom;
+
+  throw new Error(`Location not found: ${location}`);
 }
 
 // --- Helper: Calculate Haversine distance (last-resort fallback) ---
