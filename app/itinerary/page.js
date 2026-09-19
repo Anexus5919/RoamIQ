@@ -7,6 +7,9 @@ import ItineraryDisplay from '../components/ItineraryDisplay';
 import WeatherDisplay from '../components/WeatherDisplay';
 import TravelAnalysisDisplay from '../components/TravelAnalysisDisplay';
 import HotelSuggestions from '../components/HotelSuggestions';
+import FlightOptions from '../components/FlightOptions';
+import LocalDining from '../components/LocalDining';
+import TravelAdvisory from '../components/TravelAdvisory';
 import ChainOfThoughtDisplay from '../components/ChainOfThoughtDisplay';
 import GlobeDisplay from '../components/GlobeDisplay';
 import { Card, CardContent } from '../components/ui/card';
@@ -62,10 +65,14 @@ function extractJson(text) {
   return null;
 }
 
+// Separates the live SerpApi payload from the streamed AI plan.
+// Must match STREAM_DELIMITER in /app/api/itinerary/route.js
+const STREAM_DELIMITER = '<<<ROAMIQ_LIVE_DATA_END>>>';
+
 // Initial CoT steps definition
 const initialCotSteps = [
-  { id: 'travel', text: 'Analyzing travel logistics...', status: 'pending' },
-  { id: 'dest', text: 'Gathering destination info (hotels, best time)...', status: 'pending' },
+  { id: 'travel', text: 'Searching live flights and routes...', status: 'pending' },
+  { id: 'dest', text: 'Finding real hotels, places and advisories...', status: 'pending' },
   { id: 'plan', text: 'Building your day-by-day plan...', status: 'pending' },
 ];
 
@@ -144,205 +151,125 @@ function ItineraryPageContent() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let coordsExtracted = false; // Flag to track if we've shown the globe early
-      let fullItineraryParsed = false; // Flag to track if we've parsed complete itinerary
+      let liveData = null; // Real SerpApi payload, sent ahead of the AI stream
+      let planParsed = false; // Whether the AI day-plan has been merged in
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          // Mark all steps as done when streaming completes
-          if (!fullItineraryParsed) {
-            setCotSteps(prevSteps => prevSteps.map(step => ({ ...step, status: 'done' })));
+          if (!planParsed) {
+            setCotSteps((prevSteps) => prevSteps.map((step) => ({ ...step, status: 'done' })));
           }
           console.log('✅ Stream complete');
           break;
         }
 
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
-        
-        // Only update streaming text if we haven't parsed complete itinerary yet
-        if (!fullItineraryParsed) {
-          setStreamingText(buffer);
-        }
+        buffer += decoder.decode(value, { stream: true });
 
-        // Try to parse complete itinerary during streaming (not just at the end!)
-        if (!fullItineraryParsed && buffer.includes('"days":') && buffer.includes('"destinationSummary":')) {
-          const extractedJson = extractJson(buffer);
-          if (extractedJson) {
-            try {
-              const parsed = JSON.parse(extractedJson);
-              // Validate it's complete
-              if (parsed && parsed.destinationName && parsed.fromCoords && parsed.days && parsed.days.length > 0) {
-                setItinerary(parsed);
-                setLayoutState('results');
-                setCotSteps(initialCotSteps.map(s => ({ ...s, status: 'done' })));
-                fullItineraryParsed = true;
-                coordsExtracted = true; // Also set this to prevent further coordinate extraction
-                console.log('✅ Complete itinerary parsed - stopping all further processing');
-                // Don't break - let the stream finish naturally but we're done processing
-              }
-            } catch (e) {
-              // Not valid yet, continue
-            }
-          }
-        }
+        // 1. Split off the live SerpApi payload that precedes the AI stream.
+        //    Real flights, hotels and the globe can render before the model
+        //    has produced a single token.
+        if (!liveData) {
+          const delimiterIndex = buffer.indexOf(STREAM_DELIMITER);
+          if (delimiterIndex === -1) continue; // prelude still arriving
 
-        // Skip all further processing if we already have complete itinerary
-        if (fullItineraryParsed) {
-          continue; // Just drain the stream, don't process
-        }
-
-        // Try to extract coordinates early and show results layout with globe ASAP
-        if (!coordsExtracted && buffer.includes('"fromCoords"') && buffer.includes('"destinationCoords"')) {
           try {
-            // Try to extract just the coordinates portion for early globe rendering
-            const fromCoordsMatch = buffer.match(/"fromCoords":\s*\{[^}]+\}/);
-            const destCoordsMatch = buffer.match(/"destinationCoords":\s*\{[^}]+\}/);
-            const fromNameMatch = buffer.match(/"fromName":\s*"([^"]+)"/);
-            const destNameMatch = buffer.match(/"destinationName":\s*"([^"]+)"/);
-            
-            if (fromCoordsMatch && destCoordsMatch && fromNameMatch && destNameMatch) {
-              const partialItinerary = {
-                fromCoords: JSON.parse(fromCoordsMatch[0].split(':')[1]),
-                destinationCoords: JSON.parse(destCoordsMatch[0].split(':')[1]),
-                fromName: fromNameMatch[1],
-                destinationName: destNameMatch[1],
-                travelAnalysis: null, // Will be filled later
-                destinationSummary: null,
-                days: []
-              };
-              
-              // Show the globe immediately with just the path
-              setItinerary(partialItinerary);
-              setLayoutState('results');
-              coordsExtracted = true;
-              console.log('🌍 Globe coordinates extracted early - showing map!');
+            liveData = JSON.parse(buffer.slice(0, delimiterIndex));
+          } catch (e) {
+            throw new Error('Could not read live travel data from the server.');
+          }
+
+          buffer = buffer.slice(delimiterIndex + STREAM_DELIMITER.length);
+
+          setItinerary({ ...liveData, days: [] });
+          setLayoutState('results');
+          setCotSteps((prevSteps) =>
+            prevSteps.map((step) =>
+              step.id === 'plan' ? { ...step, status: 'loading' } : { ...step, status: 'done' }
+            )
+          );
+          console.log('🌍 Live SerpApi data received — rendering globe, flights and hotels');
+        }
+
+        // Nothing left to do but drain the socket once the plan is in.
+        if (planParsed) continue;
+
+        setStreamingText(buffer);
+
+        // 2. Merge the AI plan the moment it forms valid JSON.
+        const extractedJson = extractJson(buffer);
+        if (extractedJson) {
+          try {
+            const plan = JSON.parse(extractedJson);
+            if (plan && Array.isArray(plan.days) && plan.days.length > 0) {
+              setItinerary({
+                ...liveData,
+                destinationSummary: {
+                  ...liveData.destinationSummary,
+                  bestTimeToVisit: plan.bestTimeToVisit || 'Varies by season.',
+                },
+                thoughtProcess: plan.thoughtProcess || '',
+                days: plan.days,
+              });
+              setCotSteps(initialCotSteps.map((s) => ({ ...s, status: 'done' })));
+              planParsed = true;
+              console.log('✅ AI plan parsed and merged with live data');
+              continue;
             }
           } catch (e) {
-            // Coordinates not fully formed yet, continue streaming
+            // Not valid yet, keep streaming
           }
         }
 
-        // Update CoT steps based on keywords in the stream (more responsive than waiting for valid JSON)
-        setCotSteps(prevSteps => {
-          // Safety check - if steps array is empty or invalid, return it as-is
-          if (!prevSteps || prevSteps.length === 0) {
-            return prevSteps;
-          }
-          
-          const newSteps = JSON.parse(JSON.stringify(prevSteps)); // Deep clone
-          
-          // Check for travelAnalysis section
-          if (buffer.includes('"travelAnalysis":')) {
-            if (newSteps[0] && newSteps[0].status === 'pending') {
-              newSteps[0].status = 'loading';
-            }
-          }
-          
-          // Check for destinationSummary section (travelAnalysis is complete)
-          if (buffer.includes('"destinationSummary":')) {
-            if (newSteps[0]) newSteps[0].status = 'done';
-            if (newSteps[1] && newSteps[1].status === 'pending') {
-              newSteps[1].status = 'loading';
-            }
-          }
-          
-          // Check for hotelSuggestions (more detail for destination step)
-          if (buffer.includes('"hotelSuggestions":')) {
-            if (newSteps[1]) {
-              newSteps[1].text = 'Gathering destination info (found hotels!)';
-            }
-          }
-          
-          // Check for days array (destinationSummary is complete)
-          if (buffer.includes('"days":')) {
-            if (newSteps[1]) newSteps[1].status = 'done';
-            if (newSteps[2] && newSteps[2].status === 'pending') {
-              newSteps[2].status = 'loading';
-            }
-          }
-          
-          // Count how many days have been generated
-          const dayMatches = buffer.match(/"day":\s*(\d+)/g);
-          if (dayMatches && dayMatches.length > 0 && newSteps[2]) {
-            const lastDayMatch = dayMatches[dayMatches.length - 1];
-            const dayNum = lastDayMatch.match(/\d+/)[0];
-            newSteps[2].text = `Building your plan... (Day ${dayNum})`;
-            newSteps[2].status = 'loading';
-          }
-          
-          return newSteps;
-        });
+        // 3. Progress feedback while the days stream in.
+        const dayMatches = buffer.match(/"day":\s*(\d+)/g);
+        if (dayMatches && dayMatches.length > 0) {
+          const dayNum = dayMatches[dayMatches.length - 1].match(/\d+/)[0];
+          setCotSteps((prevSteps) =>
+            prevSteps.map((step) =>
+              step.id === 'plan'
+                ? { ...step, text: `Building your plan... (Day ${dayNum})`, status: 'loading' }
+                : step
+            )
+          );
+        }
       }
 
-      // Only try final parse if we haven't already parsed during streaming
-      if (!fullItineraryParsed) {
-        console.log('⚠️ Itinerary was not parsed during streaming - attempting final parse');
-        
-        // We need to parse from the buffer we have
-        // The issue is the buffer might have extra text after valid JSON
-        let parsed = null;
-        let parseSuccess = false;
+      if (!liveData) {
+        throw new Error('No travel data was received. Please try again.');
+      }
 
-        // Try extractJson first - it finds balanced braces
+      // Final attempt, for when the plan only completes as the stream closes.
+      if (!planParsed) {
+        console.log('⚠️ Plan not parsed during streaming - attempting final parse');
+
+        let plan = null;
         const finalJson = extractJson(buffer);
         if (finalJson) {
           try {
-            parsed = JSON.parse(finalJson);
-            if (parsed && parsed.destinationName && parsed.days) {
-              parseSuccess = true;
-              console.log('✅ Final parse successful using extractJson');
-            }
+            plan = JSON.parse(finalJson);
           } catch (e) {
-            console.warn('Final parse: extractJson failed:', e.message);
+            console.warn('Final parse failed:', e.message);
           }
         }
 
-        // If that failed, try regex to find the largest valid JSON
-        if (!parseSuccess) {
-          try {
-            const jsonMatches = buffer.match(/\{(?:[^{}]|(\{(?:[^{}]|(\{[^{}]*\})*)*\}))*\}/g);
-            if (jsonMatches && jsonMatches.length > 0) {
-              // Sort by length and try the largest ones first
-              const sortedMatches = jsonMatches.sort((a, b) => b.length - a.length);
-              for (const match of sortedMatches) {
-                try {
-                  parsed = JSON.parse(match);
-                  if (parsed && parsed.destinationName && parsed.fromCoords && parsed.days) {
-                    parseSuccess = true;
-                    console.log('✅ Final parse successful using regex extraction');
-                    break;
-                  }
-                } catch (e) {
-                  continue; // Try next match
-                }
-              }
-            }
-          } catch (e) {
-            console.warn('Final parse: Regex extraction failed:', e.message);
-          }
-        }
-
-        // Update state if we got valid data
-        if (parseSuccess && parsed) {
-          setItinerary(parsed);
-          setLayoutState('results');
-          setCotSteps(initialCotSteps.map(s => ({ ...s, status: 'done' })));
+        if (plan && Array.isArray(plan.days) && plan.days.length > 0) {
+          setItinerary({
+            ...liveData,
+            destinationSummary: {
+              ...liveData.destinationSummary,
+              bestTimeToVisit: plan.bestTimeToVisit || 'Varies by season.',
+            },
+            thoughtProcess: plan.thoughtProcess || '',
+            days: plan.days,
+          });
           console.log('✅ Complete itinerary loaded from final parse');
         } else {
-          // Final parse failed - check if we have any partial data displayed
-          if (coordsExtracted) {
-            console.warn('⚠️ Final parse failed but coordinates are displayed - app remains functional');
-            setCotSteps(initialCotSteps.map(s => ({ ...s, status: 'done' })));
-            // Don't throw error - we have something to show
-          } else {
-            console.error('❌ Complete failure - no data could be parsed or displayed');
-            throw new Error('Unable to parse itinerary data. Please try again.');
-          }
+          // The live data is already on screen, so degrade gracefully rather
+          // than throwing away a working page.
+          console.warn('⚠️ AI plan unavailable — showing live travel data only');
         }
-      } else {
-        console.log('✅ Skipping final parse - complete itinerary already loaded during streaming');
+        setCotSteps(initialCotSteps.map((s) => ({ ...s, status: 'done' })));
       }
     } catch (err) {
       console.error('Error fetching itinerary:', err);
@@ -429,7 +356,7 @@ function ItineraryPageContent() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                        <p className="text-muted-foreground">Loading full itinerary details...</p>
+                        <p className="text-muted-foreground">Writing your day-by-day plan...</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -440,11 +367,22 @@ function ItineraryPageContent() {
                 <div className="lg:col-span-2 space-y-6">
                   {itinerary.destinationName && <WeatherDisplay city={itinerary.destinationName} />}
                   {itinerary.travelAnalysis && <TravelAnalysisDisplay analysis={itinerary.travelAnalysis} />}
+                  {itinerary.flights?.length > 0 && (
+                    <FlightOptions
+                      flights={itinerary.flights}
+                      route={itinerary.flightRoute}
+                      priceInsights={itinerary.priceInsights}
+                    />
+                  )}
                   {itinerary.days && itinerary.days.length > 0 && <ItineraryDisplay itinerary={itinerary} />}
                 </div>
                 <div className="lg:col-span-1 space-y-6">
                   {itinerary.destinationSummary?.hotelSuggestions && (
                     <HotelSuggestions hotels={itinerary.destinationSummary.hotelSuggestions} />
+                  )}
+                  {itinerary.dining?.length > 0 && <LocalDining places={itinerary.dining} />}
+                  {itinerary.news?.length > 0 && (
+                    <TravelAdvisory news={itinerary.news} destination={itinerary.destinationName} />
                   )}
                 </div>
               </div>

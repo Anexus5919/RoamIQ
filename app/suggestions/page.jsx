@@ -1,19 +1,27 @@
 // /app/suggestions/page.jsx
-import dbConnect from '@/lib/dbConnect';
-import Suggestion from '@/models/Suggestion';
-import SuggestionCard from '../components/SuggestionCard';
+import Link from 'next/link';
 import { Compass } from 'lucide-react';
+import SuggestionCard from '../components/SuggestionCard';
+import { Badge } from '../components/ui/badge';
+import { exploreDestinations } from '@/lib/serpapi';
 
-// Fetch data on the server
-async function getSuggestions() {
-  await dbConnect();
-  const suggestions = await Suggestion.find({});
-  // Serialize data for the client component (SuggestionCard uses Link, needs serialization)
-  return JSON.parse(JSON.stringify(suggestions));
-}
+// Popular Indian origin airports. Picking one re-runs Google Travel Explore
+// for that city, so prices and dates are always live.
+const ORIGINS = [
+  { code: 'BOM', city: 'Mumbai' },
+  { code: 'DEL', city: 'Delhi' },
+  { code: 'BLR', city: 'Bengaluru' },
+  { code: 'MAA', city: 'Chennai' },
+  { code: 'HYD', city: 'Hyderabad' },
+  { code: 'CCU', city: 'Kolkata' },
+];
 
-export default async function SuggestionsPage() {
-  const suggestions = await getSuggestions();
+export default async function SuggestionsPage({ searchParams }) {
+  const params = await searchParams;
+  const originCode = (params?.from || 'BOM').toUpperCase();
+  const origin = ORIGINS.find((o) => o.code === originCode) || ORIGINS[0];
+
+  const destinations = await exploreDestinations({ originCode: origin.code, limit: 12 });
 
   return (
     <div className="space-y-8">
@@ -25,20 +33,37 @@ export default async function SuggestionsPage() {
           </h1>
         </div>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          Discover amazing destinations and start planning your next adventure
+          Live destinations and real flight prices from {origin.city}, updated as fares move
         </p>
       </div>
 
-      {suggestions.length === 0 ? (
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <span className="text-xs text-muted-foreground font-medium mr-1">Flying from</span>
+        {ORIGINS.map((o) => (
+          <Link key={o.code} href={`/suggestions?from=${o.code}`}>
+            <Badge
+              variant={o.code === origin.code ? 'default' : 'secondary'}
+              className="cursor-pointer"
+            >
+              {o.city}
+            </Badge>
+          </Link>
+        ))}
+      </div>
+
+      {destinations.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
-            No suggestions found. Please add some to the database!
+            No destinations available right now. Please try another departure city.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {suggestions.map((suggestion) => (
-            <SuggestionCard key={suggestion._id} suggestion={suggestion} />
+          {destinations.map((destination) => (
+            <SuggestionCard
+              key={`${destination.name}-${destination.airportCode}`}
+              suggestion={destination}
+            />
           ))}
         </div>
       )}

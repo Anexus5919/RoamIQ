@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cache": "node scripts/cache.mjs",
+    "cache:clear": "node scripts/cache.mjs clear"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

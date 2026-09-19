@@ -1,23 +1,25 @@
 // /app/api/suggestions/route.js
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/dbConnect';
-import Suggestion from '@/models/Suggestion';
+import { exploreDestinations } from '@/lib/serpapi';
 
-export async function GET() {
-  await dbConnect();
+// Trip inspiration used to come from a hand-seeded MongoDB collection. It now
+// comes from Google Travel Explore via SerpApi, so the destinations — and their
+// flight prices — are live rather than static.
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const originCode = (searchParams.get('from') || 'BOM').toUpperCase();
 
   try {
-    const suggestions = await Suggestion.find({});
-    return NextResponse.json(suggestions);
+    const destinations = await exploreDestinations({ originCode, limit: 12 });
+    return NextResponse.json({ origin: originCode, destinations });
   } catch (error) {
-    console.error('Failed to fetch suggestions:', error);
+    console.error('Failed to fetch destination suggestions:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch suggestions' },
+      { error: 'Failed to fetch destination suggestions' },
       { status: 500 }
     );
   }
 }
 
-// We export this to force dynamic fetching on Vercel/Netlify.
-// This ensures our suggested trips are always fresh.
+// Keep results fresh rather than baked in at build time.
 export const dynamic = 'force-dynamic';

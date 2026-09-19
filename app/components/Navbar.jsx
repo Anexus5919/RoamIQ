@@ -9,6 +9,7 @@ import ThemeSwitcher from './ThemeSwitcher';
 import { useItinerary } from '../context/ItineraryContext';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -114,9 +115,29 @@ export default function Navbar() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Project Description */}
-              <div>
+              <div className="space-y-3">
                 <p className="text-muted-foreground leading-relaxed">
-                  RoamIQ is an AI-powered travel planning platform that creates personalized itineraries for your dream destinations. The system intelligently analyzes your preferences, budget, and interests to craft detailed day-by-day travel plans with real-time data integration.
+                  RoamIQ is a travel planning platform built on live search data. Real flight
+                  fares, hotel rates, restaurants and destination news are fetched from SerpApi
+                  first; an AI model then writes a day-by-day plan around those verified facts.
+                  Every price and place name you see is real — the model never invents them.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    'Google Flights',
+                    'Google Hotels',
+                    'Maps Directions',
+                    'Google Local',
+                    'Google News',
+                    'Travel Explore',
+                  ].map((engine) => (
+                    <Badge key={engine} variant="secondary">
+                      {engine}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Six SerpApi engines power the live data in this app.
                 </p>
               </div>
 
@@ -143,8 +164,11 @@ export default function Navbar() {
 
                 {/* Developed For */}
                 <div>
-                  <h3 className="font-semibold text-sm text-muted-foreground mb-1">Developed for</h3>
-                  <p className="text-base font-semibold">Gradguide by Computrain</p>
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-1">Built for</h3>
+                  <p className="text-base font-semibold">SerpApi India Hackathon 2026</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Travel &amp; Local Discovery track
+                  </p>
                 </div>
               </div>
 

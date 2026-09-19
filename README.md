@@ -7,7 +7,8 @@
 
 ![Next.js](https://img.shields.io/badge/Next.js-15.5.6-black?style=for-the-badge&logo=next.js)
 ![React](https://img.shields.io/badge/React-19.1.0-61dafb?style=for-the-badge&logo=react)
-![Ollama](https://img.shields.io/badge/Ollama-llama3-000000?style=for-the-badge&logo=llama)
+![SerpApi](https://img.shields.io/badge/SerpApi-Live_Search_Data-4285F4?style=for-the-badge&logo=google)
+![Groq](https://img.shields.io/badge/Groq-gpt--oss--120b-f55036?style=for-the-badge)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4.1-38bdf8?style=for-the-badge&logo=tailwind-css)
 
 **Transform your travel dreams into detailed, personalized itineraries with the power of AI**
@@ -20,12 +21,23 @@
 
 ## 📖 Overview
 
-RoamIQ is an intelligent travel planning platform that leverages **local AI** (Ollama with Llama 3) to generate comprehensive, day-by-day travel itineraries. The application provides real-time travel data, hotel recommendations, weather forecasts, and an interactive 3D globe visualization of your journey.
+RoamIQ is an intelligent travel planning platform that turns **live search data from SerpApi** into comprehensive, day-by-day travel itineraries. Real flight fares, real hotel rates, real restaurants and real news are fetched first; a Groq-hosted LLM then writes the plan around those verified facts. The result is an itinerary you can actually book, not one the model invented.
 
-### ⚠️ **Important: Local Ollama Required**
+### 🔍 **How SerpApi powers RoamIQ**
 
-> **This application requires Ollama running locally on port 11434.**  
-> The deployed/production version will only display the frontend UI. For full functionality including AI-powered itinerary generation, you **must** clone this repository and run Ollama with the Llama 3 model on your local machine.
+Every number a user sees — every fare, nightly rate, rating and review count — comes from SerpApi and is passed to the UI **verbatim**. The language model never generates prices or place names; it only writes narrative around data that was already verified.
+
+| SerpApi engine | What it powers in the app |
+|---|---|
+| `google_flights` | Real fares, airlines, durations, stops and CO₂ estimates |
+| `google_flights_autocomplete` | Resolves typed city names to IATA airport codes |
+| `google_hotels` | Nightly rates, star class, ratings, deals and photos |
+| `google_maps_directions` | Road distance and drive time between origin and destination |
+| `google_local` | Highly rated restaurants and attractions at the destination |
+| `google_news` | "Before You Go" advisories and recent destination coverage |
+| `google_travel_explore` | The Trip Inspiration page — live destinations and fares by origin |
+
+All calls funnel through [`lib/serpapi.js`](lib/serpapi.js), which adds a TTL cache so repeat lookups don't burn search credits.
 
 ---
 
@@ -42,10 +54,12 @@ RoamIQ is an intelligent travel planning platform that leverages **local AI** (O
 - **Responsive design** optimized for all devices
 
 ### 🌤️ **Real-Time Data Integration**
+- **Live flight fares** with airlines, stops and carbon estimates
+- **Live hotel rates** filtered by budget, with ratings and photos
+- **Road distance and drive time** between origin and destination
+- **Restaurants and attractions** pulled from Google Local
+- **Destination news** surfaced as a pre-trip advisory
 - **Weather forecasts** for destination cities
-- **Hotel recommendations** filtered by budget
-- **Travel distance calculations** with multiple transport options
-- **Destination highlights** from SerpAPI
 
 ### 🎨 **Modern UI/UX**
 - **Dark/Light mode** with seamless theme switching
@@ -54,7 +68,7 @@ RoamIQ is an intelligent travel planning platform that leverages **local AI** (O
 - **Lucide React icons** throughout
 
 ### 📱 **Smart Features**
-- **Suggested trips** with pre-curated destinations
+- **Suggested trips** discovered live, with real fares by departure city
 - **Plan new trip** directly from itinerary page
 - **Interest tags** with pill-based input system
 - **Date range picker** with validation
@@ -73,17 +87,15 @@ RoamIQ is an intelligent travel planning platform that leverages **local AI** (O
 - **react-globe.gl** - 3D globe visualization
 
 ### **Backend & APIs**
-- **Ollama** - Local AI inference (Llama 3 model)
-- **TomTom API** - Geocoding and routing
-- **SerpAPI** - Destination data and highlights
+- **SerpApi** - Live flights, hotels, directions, places, news and destinations
+- **Groq** - Hosted LLM inference (`openai/gpt-oss-120b`) with token streaming
+- **TomTom API** - Geocoding for the 3D globe
 - **OpenWeather API** - Weather forecasts
-- **MongoDB** - Database for suggested trips
 
 ### **State Management & Utilities**
 - **Context API** - Global state management
 - **next-themes** - Theme management
 - **date-fns** - Date manipulation
-- **Mongoose** - MongoDB ODM
 
 ---
 
@@ -94,14 +106,14 @@ Before you begin, ensure you have the following installed:
 ### **Required**
 - **Node.js** 18.x or higher ([Download](https://nodejs.org/))
 - **npm** or **yarn** package manager
-- **Ollama** ([Download](https://ollama.ai/))
-- **Llama 3 model** for Ollama
+
+No local model server is needed — inference runs on Groq.
 
 ### **API Keys** (Required for full functionality)
+- **SerpApi Key** - [Get here](https://serpapi.com/) — the free plan includes 250 searches/month and covers every engine RoamIQ uses, flights and hotels included
+- **Groq API Key** - [Get here](https://console.groq.com/)
 - **TomTom API Key** - [Get here](https://developer.tomtom.com/)
-- **SerpAPI Key** - [Get here](https://serpapi.com/)
 - **OpenWeather API Key** - [Get here](https://openweathermap.org/api)
-- **MongoDB Connection String** (optional for suggestions feature)
 
 ---
 
@@ -122,45 +134,30 @@ npm install
 yarn install
 ```
 
-### **Step 3: Set Up Ollama**
-
-1. **Download and install Ollama** from [ollama.ai](https://ollama.ai/)
-
-2. **Pull the Llama 3 model:**
-```bash
-ollama pull llama3:latest
-```
-
-3. **Verify Ollama is running** (should be on port 11434):
-```bash
-ollama list
-```
-
-4. **Test the model:**
-```bash
-ollama run llama3:latest "Hello, world!"
-```
-
-> **Critical:** Ollama must be running on `http://localhost:11434` for the application to generate itineraries.
-
-### **Step 4: Configure Environment Variables**
+### **Step 3: Configure Environment Variables**
 
 Create a `.env.local` file in the root directory:
 
 ```env
-# API Keys
-TOMTOM_API_KEY=your_tomtom_api_key_here
+# Live search data — powers flights, hotels, places, news and discovery
 SERPAPI_API_KEY=your_serpapi_key_here
+
+# LLM inference
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=openai/gpt-oss-120b   # optional, this is the default
+
+# Geocoding for the 3D globe
+TOMTOM_API_KEY=your_tomtom_api_key_here
+
+# Weather forecasts
 OPENWEATHER_API_KEY=your_openweather_key_here
-
-# MongoDB (Optional - for suggestions feature)
-MONGODB_URI=your_mongodb_connection_string
-
-# Ollama Configuration (Default)
-OLLAMA_BASE_URL=http://localhost:11434
 ```
 
-### **Step 5: Run the Development Server**
+> **Note on search credits:** a fresh itinerary costs about 5–7 SerpApi searches.
+> `lib/serpapi.js` caches every response, so repeated lookups for the same city
+> are free until the TTL expires.
+
+### **Step 4: Run the Development Server**
 
 ```bash
 npm run dev
@@ -180,17 +177,21 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 RoamIQ/
 ├── app/
 │   ├── api/                    # API Routes
-│   │   ├── itinerary/         # AI itinerary generation endpoint
-│   │   ├── suggestions/       # Curated trip suggestions
+│   │   ├── itinerary/         # Live data + AI itinerary generation endpoint
+│   │   ├── suggestions/       # Live destination discovery (Travel Explore)
 │   │   └── weather/           # Weather forecast endpoint
 │   │
 │   ├── components/            # React Components
 │   │   ├── ui/               # shadcn/ui components
 │   │   ├── ChainOfThoughtDisplay.jsx
+│   │   ├── FlightOptions.jsx      # Live fares from Google Flights
 │   │   ├── GlobeDisplay.jsx
+│   │   ├── HotelSuggestions.jsx   # Live rates from Google Hotels
 │   │   ├── ItineraryDisplay.jsx
 │   │   ├── ItineraryForm.jsx
+│   │   ├── LocalDining.jsx        # Restaurants from Google Local
 │   │   ├── Navbar.jsx
+│   │   ├── TravelAdvisory.jsx     # Destination news
 │   │   └── ...
 │   │
 │   ├── context/              # React Context
@@ -208,11 +209,8 @@ RoamIQ/
 │   └── globals.css           # Global styles
 │
 ├── lib/                      # Utility functions
-│   ├── dbConnect.js          # MongoDB connection
+│   ├── serpapi.js            # SerpApi client + TTL cache (all live data)
 │   └── utils.js              # Helper utilities
-│
-├── models/                   # MongoDB models
-│   └── Suggestion.js
 │
 ├── public/                   # Static assets
 │
@@ -246,11 +244,13 @@ RoamIQ/
 ┌─────────────────────────────────────────────────────────────┐
 │  API ROUTE (app/api/itinerary/route.js)                     │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ 1. Geocode locations (TomTom API)                       ││
-│  │ 2. Calculate routes and distances                       ││
-│  │ 3. Fetch destination data (SerpAPI)                     ││
-│  │ 4. Generate AI itinerary (Ollama + Llama 3)             ││
-│  │ 5. Stream response in real-time                         ││
+│  │ 1. Geocode locations (TomTom, India-biased)             ││
+│  │ 2. Fetch live data from SerpApi, all in parallel:       ││
+│  │      google_flights · google_hotels                     ││
+│  │      google_maps_directions · google_local · news       ││
+│  │ 3. Stream that payload to the client IMMEDIATELY        ││
+│  │ 4. Ask Groq to write the day plan around those facts    ││
+│  │ 5. Stream the AI tokens after the live-data delimiter   ││
 │  └─────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -260,10 +260,17 @@ RoamIQ/
 │  - GlobeDisplay: 3D visualization with flight path          │
 │  - WeatherDisplay: Forecast for destination                 │
 │  - TravelAnalysisDisplay: Distance & transport options      │
+│  - FlightOptions: Live fares, stops, CO₂                    │
+│  - HotelSuggestions: Live nightly rates, ratings, photos    │
+│  - LocalDining: Rated restaurants near the destination      │
+│  - TravelAdvisory: Recent destination news                  │
 │  - ItineraryDisplay: Day-by-day plan                        │
-│  - HotelSuggestions: Budget-filtered recommendations        │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+Because the live payload is flushed before the model starts generating, the
+globe, flights and hotels are on screen while the itinerary is still being
+written.
 
 ### **Key Components Relationships**
 
@@ -281,13 +288,13 @@ ItineraryContext
 #### **Page Flow**
 1. **`/`** (Landing) → User fills form → Navigate to `/itinerary`
 2. **`/itinerary`** → Fetch AI data → Display results
-3. **`/suggestions`** → Browse curated trips → Select → Auto-fill form
+3. **`/suggestions`** → Browse live destinations by origin → Select → Auto-fill form
 
 #### **API Integration**
-- **TomTom API**: Geocoding, routing, travel time calculations
-- **SerpAPI**: Destination highlights, attractions, best time to visit
+- **SerpApi**: Flights, hotels, directions, restaurants, attractions, news and destination discovery
+- **TomTom API**: Geocoding for the 3D globe
 - **OpenWeather**: Real-time weather forecasts
-- **Ollama**: AI-powered itinerary generation with streaming
+- **Groq**: Itinerary generation with token streaming
 
 ---
 
@@ -327,11 +334,11 @@ Create a `.env.local` file with these variables:
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
+| `SERPAPI_API_KEY` | SerpApi key — flights, hotels, places, news, discovery | ✅ Yes | - |
+| `GROQ_API_KEY` | Groq key for itinerary generation | ✅ Yes | - |
 | `TOMTOM_API_KEY` | TomTom API key for geocoding | ✅ Yes | - |
-| `SERPAPI_API_KEY` | SerpAPI key for destination data | ✅ Yes | - |
 | `OPENWEATHER_API_KEY` | OpenWeather API key for forecasts | ✅ Yes | - |
-| `MONGODB_URI` | MongoDB connection string | ⚠️ Optional | - |
-| `OLLAMA_BASE_URL` | Ollama server URL | ⚠️ Optional | `http://localhost:11434` |
+| `GROQ_MODEL` | Override the Groq model | ⚠️ Optional | `openai/gpt-oss-120b` |
 
 ---
 
@@ -339,38 +346,28 @@ Create a `.env.local` file with these variables:
 
 ### **Important Considerations**
 
-1. **Ollama Requirement:**
-   - Ollama **must** run locally on the user's machine
-   - Cannot be deployed to serverless platforms (Vercel, Netlify, etc.)
-   - Consider self-hosting on VPS/dedicated server with Ollama installed
+1. **Fully serverless-friendly:**
+   - Inference runs on Groq and all data comes from HTTP APIs, so RoamIQ
+     deploys to Vercel, Netlify or any Node host with no extra infrastructure.
 
-2. **Alternative AI Options:**
-   - Replace Ollama with OpenAI API for cloud deployment
-   - Use Anthropic Claude API
-   - Integrate with other LLM providers
+2. **Search credits:**
+   - A fresh itinerary costs roughly 5–7 SerpApi searches; the free plan
+     allows 250/month at 50/hour.
+   - `lib/serpapi.js` caches every response with a per-engine TTL, so demoing
+     the same trip repeatedly costs nothing after the first run.
 
-3. **Database:**
-   - MongoDB is optional (only for suggestions feature)
-   - Can remove if not needed
+3. **No database required:**
+   - Trip inspiration is served live from Google Travel Explore rather than a
+     seeded collection, so there is nothing to provision or keep in sync.
 
-### **Self-Hosting with Ollama**
-
-If deploying to a VPS:
+### **Deploying**
 
 ```bash
-# Install Ollama on server
-curl https://ollama.ai/install.sh | sh
-
-# Pull model
-ollama pull llama3:latest
-
-# Run as service
-ollama serve
-
-# Deploy Next.js app
 npm run build
 npm start
 ```
+
+Set the four environment variables above in your host's dashboard.
 
 ---
 

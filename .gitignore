@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SerpApi response cache (local only, keeps demo runs free)
+.serpapi-cache/
