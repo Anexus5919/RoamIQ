@@ -1,6 +1,6 @@
 # RoamIQ demo script
 
-Target length **2:50**. Narration is 426 words at 150 words per minute.
+Target length **2:50**. Narration is 436 words at 154 words per minute.
 Subtitles with matching timecodes are in `demo-subtitles.srt`, ready to import.
 
 Every figure below is what the app actually produced on a live run of
@@ -28,6 +28,39 @@ speed, since those are the moments worth seeing.
 
 ---
 
+## Page layout, verified from real screenshots
+
+The results page is a two column grid. **The right sidebar starts level with the
+weather card**, so hotels are on screen at the same time as the flights, not
+below them. Do not plan a shot that scrolls "down to the hotels".
+
+**Left column, in scroll order**
+
+1. 3D globe, full width, 500px tall
+2. Current Weather in Goa
+3. Travel Logistics, distance and transport options
+4. Flight Options, six cards
+5. Where You Are Staying, six hotels plus "I am staying somewhere else"
+6. Trip approval bar
+7. Your Trip to Goa, containing Best Time to Visit, AI Planner's Thoughts, then Day 1 to 4
+
+**Right sidebar, starts at the weather card**
+
+1. Hotel Suggestions, six
+2. Where to Eat, eight restaurants
+3. Before You Go, four news items
+
+**My Trips** is header, then a stats row (planned, completed, in progress,
+cancelled, favourites), then the filter chips, the favourites toggle and the
+sort dropdown, then the trip cards. A cancelled trip shows a struck through
+title with its reason chip and a Reinstate button.
+
+**Shared plan** is the destination name, a Make it yours card with "Route from
+my location" and "Save to my trips", Best Time to Visit, then the re-clustered
+days.
+
+---
+
 ## Shot list
 
 | Time | On screen | Do this | Narration |
@@ -36,8 +69,8 @@ speed, since those are the moments worth seeing.
 | 0:11 | About modal | Click **About the Project**, let the seven engine badges land, close it | Seven SerpApi engines power it. Google Flights, Hotels, Maps Directions, Local, News, Travel Explore, and Maps geocoding. The model never invents a price or a place name. |
 | 0:23 | Form | Type Mumbai, then Goa, dates 10 to 14 Nov, mid-range, Flight, three interest tags, click **Build My Itinerary** | Mumbai to Goa. Five days in November, mid range budget, interests set to beaches, food and heritage. Budget is not cosmetic here. It changes how flights and hotels are ranked. |
 | 0:35 | Generation | Let the chain-of-thought steps tick, globe paints early | Watch the order. Real data lands first. The globe, the route, the flights. Only then does the model start writing. It is describing facts that were already verified, not generating them. |
-| 0:50 | Flight Options | Scroll to the flight cards, hover the cheapest | Live fares from Google Flights. IndiGo, thirteen thousand three hundred and thirty rupees, one hour fifteen, non stop, forty three kilograms of carbon. Price insights flag this route as currently high. |
-| 1:05 | Hotel Suggestions | Scroll the hotel sidebar | Real hotels at tonight's rates. Rosetum Anjuna, two thousand and twenty eight rupees a night, rated four point four. Photos and star class come straight from Google Hotels. |
+| 0:50 | Flights left, hotels right | One slow scroll. Flight cards fill the left column while Hotel Suggestions is already visible top right | Scrolling down, live fares on the left and live hotel rates on the right, at the same time. IndiGo, thirteen thousand three hundred and thirty rupees, non stop, forty three kilograms of carbon. Rosetum Anjuna, two thousand and twenty eight a night. |
+| 1:05 | Where to Eat, Before You Go | Keep scrolling the right sidebar past the hotels | The sidebar keeps going. Real restaurants from Google Local with ratings and price bands, then recent Goa news as a pre trip advisory. Four sources, all live. |
 | 1:16 | Where You Are Staying | Click a different hotel, show the route change, then click **I am staying somewhere else** | Here is what matters. Where you sleep anchors every route. Pick a different hotel and the whole trip re clusters instantly, with no API call. Staying somewhere we did not suggest? Check in and it uses your real coordinates. |
 | 1:30 | Day routes | Scroll slowly through days 1 to 4, let the distance badges read | Days are grouped by geography before the model sees them. Distances use the Haversine formula. Clustering is capacitated greedy. Seed each day with the furthest place, pull in its nearest neighbours, and stop when the next one is over twelve kilometres away. Within a day, nearest neighbour ordering, a greedy travelling salesman approximation. K means gives unbalanced days, so I rejected it. |
 | 1:52 | Day 2 Walkable badge, then drag | Point at the badge, click **Make changes**, drag a stop up one place | Old Goa comes in at a six hundred metre spread, so it earns a Walkable badge. Drag any stop and every distance recomputes on drop. Pure arithmetic, no network call. |

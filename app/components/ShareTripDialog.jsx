@@ -18,6 +18,7 @@ import { shareUrlFor } from '@/lib/trip-share';
  */
 export default function ShareTripDialog({ trip, onClose }) {
   const [url, setUrl] = useState('');
+  const [hasProse, setHasProse] = useState(true);
   const [dataUrl, setDataUrl] = useState('');
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -27,9 +28,10 @@ export default function ShareTripDialog({ trip, onClose }) {
 
     (async () => {
       try {
-        const link = await shareUrlFor(trip);
+        const { url: link, prose } = await shareUrlFor(trip);
         if (cancelled) return;
         setUrl(link);
+        setHasProse(prose);
 
         const image = await QRCode.toDataURL(link, {
           width: 320,
@@ -109,6 +111,12 @@ export default function ShareTripDialog({ trip, onClose }) {
                 />
               </div>
               <Badge variant="secondary">{url.length} characters, no server involved</Badge>
+              {!hasProse && (
+                <p className="text-xs text-muted-foreground text-center max-w-xs">
+                  The stop descriptions were left out to keep this scannable. Your friend still
+                  gets every place, and the route is rebuilt around their hotel.
+                </p>
+              )}
             </div>
           )}
 
