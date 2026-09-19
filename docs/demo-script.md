@@ -3,8 +3,9 @@
 Written to match the recorded take: **175.98 seconds, 1920x1080**, light theme
 for the app, dark theme for My Trips and the shared plan.
 
-383 words at **131 words per minute**, which is a relaxed speaking pace with
-room to breathe rather than a race. Subtitles with matching timecodes are in
+454 words at **155 words per minute**, written to run continuously. There are
+no silent gaps: every line hands straight to the next, and the last one lands at
+175.95 of 175.98 seconds. Subtitles with matching timecodes are in
 `demo-subtitles.srt`.
 
 The timings below come from frames pulled out of the actual recording, so each
@@ -16,55 +17,55 @@ sit on the footage without re-cutting.
 ## Narration, in order
 
 **0:00 — Landing page**
-> Let's plan a trip to Goa. This is RoamIQ, and every price you'll see here is real.
+> Let's plan a trip to Goa. This is RoamIQ, and everything you're about to see, every price, every place, is real.
 
 **0:08 — Trip Inspiration, live prices from Mumbai**
-> It starts with inspiration. These are live destinations from Mumbai, with today's actual flight prices.
+> It starts with inspiration. These are live destinations out of Mumbai, each one showing what a flight actually costs today.
 
 **0:16 — About the Project modal**
-> Seven SerpApi engines feed this app. The AI never invents a price or a place name.
+> Seven SerpApi engines feed this app, and that matters, because the AI never invents a price or a place name.
 
 **0:24 — Filling the form**
-> So let's build one. Mumbai to Goa, the tenth to the fourteenth of November, mid range budget. I'll add beaches and food as my interests. And budget isn't just a label here, it changes which flights and hotels you get.
+> So let's build one. Mumbai to Goa, the tenth to the fourteenth of November, on a mid range budget. I'll add beaches and food as my interests. And budget isn't just a label here, it changes which flights and which hotels come back.
 
 **0:40 — Globe and generation**
-> Watch what happens first. The globe and the real data land before the AI writes a single word.
+> Now watch the order. The globe and all the real data land first, before the AI has written a single word.
 
 **0:48 — Results, flights left and hotels right**
-> Here's my trip. Flights on the left, and live hotel rates already waiting on the right.
+> Here's my trip. Live fares filling the left, and live hotel rates already sitting there waiting on the right.
 
 **0:56 — Clicking through to the hotel's own site**
-> And these are bookable. Tap one and it takes you straight to the hotel's own site.
+> And these aren't decoration, they're bookable. Tap any hotel and it takes you straight through to the property's own site.
 
 **1:04 — Back on the flight cards**
-> IndiGo, thirteen thousand three hundred and thirty rupees, non stop, and even the carbon estimate is real.
+> IndiGo, thirteen thousand three hundred and thirty rupees, non stop, an hour fifteen, and even the carbon estimate is real.
 
 **1:12 — Where to Eat**
-> Then where to eat, pulled from Google Local with real ratings and price bands.
+> Then where to eat, pulled from Google Local, with the ratings and the price bands people actually left there.
 
 **1:20 — Best time, planner's thoughts, news, Day 1**
-> Best time to visit, the planner's reasoning, and recent news about Goa so you know what you're walking into. Then the days themselves. Day one, the Northern Coast Heritage Trail, starting at Sinquerim Fort.
+> Best time to visit, the planner's own reasoning, and recent news about Goa so you know what you're walking into before you go. And then the days themselves. Day one is the Northern Coast Heritage Trail, opening at Sinquerim Fort.
 
 **1:36 — Scrolling the day routes. This is the important one.**
-> And here's the part I care about most. Places are grouped by geography before the AI ever sees them. Distances use the Haversine formula, and days are built with greedy clustering, so you never cross Goa twice in one day.
+> And here's the part I care about most. The places are grouped by geography before the AI ever sees them. Distances come from the Haversine formula, and the days are built with greedy clustering, so you're never crossing Goa twice in a single day.
 
 **1:52 — News article, then the globe again**
-> The advisories are real articles too, straight from the source. And back on the plan, the globe traces the route I'm actually flying. Mumbai to Goa, five hundred and seventy seven kilometres.
+> The advisories are real articles too, so you can tap one and read the original story yourself. And back on the plan, the globe is tracing the route I'm actually flying, Mumbai to Goa, five hundred and seventy seven kilometres.
 
 **2:08 — Where You Are Staying, then approving**
-> Where I'm staying anchors every route. And once I'm happy, I approve the plan and it's saved.
+> Where I'm staying anchors every single route, and once I'm happy with all of it, I approve the plan and it saves.
 
 **2:16 — My Trips**
-> Every trip lands in my history. I can filter it, sort it, favourite the ones I loved, and if I cancel a trip it asks me why and keeps that reason on record.
+> Every trip then lands in my history. I can filter it, sort it, favourite the ones I loved, and if I end up cancelling a trip, it asks me why and keeps that reason on record for next time.
 
 **2:32 — Day 3, directions and check-in**
-> On the road, each stop has directions, and I tick it off as I go.
+> Out on the road, every stop carries its own directions, and I just tick each one off as I go.
 
 **2:40 — QR dialog**
-> And I can share the whole thing as a QR code. Six hundred and sixty nine characters, no database, no server.
+> And I can hand the whole thing over as a QR code. Six hundred and sixty nine characters, no database, no server anywhere.
 
 **2:48 — Shared plan, then the phone**
-> My friend scans it, and because it re routes around where they're staying, they get a different plan from the same places.
+> My friend scans it, and because it re routes around wherever they're staying, they get a completely different plan from the same places.
 
 ---
 
@@ -72,8 +73,11 @@ sit on the footage without re-cutting.
 
 - Say it like you are showing a friend, not presenting. Contractions everywhere,
   "let's", "here's", "I'll". That is already how the lines are written.
-- The pace is deliberately slack at 131 words per minute. Pause between scenes
-  rather than filling every second.
+- **Read it straight through without stopping.** The lines are sized to run one
+  into the next, so there is no dead air to fill and nothing to wait for. If you
+  pause between scenes you will fall behind the footage.
+- 155 words per minute is a normal conversational pace. Do not rush it, but do
+  not leave silence either. Breathe on the commas, not between paragraphs.
 - Two lines carry the whole pitch. **"every price you'll see here is real"** at
   the start, and **"the AI never invents a price or a place name"** at 0:16.
   Slow down on both.
