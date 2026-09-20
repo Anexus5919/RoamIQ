@@ -23,237 +23,241 @@ These are live destinations out of Mumbai, each
 one showing what a flight actually costs today.
 
 7
-00:00:16,000 --> 00:00:18,750
-Seven SerpApi engines feed this app, and
+00:00:16,000 --> 00:00:18,859
+And all of this is coming from SerpApi.
 
 8
-00:00:18,800 --> 00:00:21,550
-that matters, because the AI never invents
+00:00:18,909 --> 00:00:21,405
+That's the whole point, the AI never
 
 9
-00:00:21,600 --> 00:00:23,950
-a price or a place name.
+00:00:21,455 --> 00:00:23,950
+invents a price or a place name.
 
 10
-00:00:24,000 --> 00:00:25,438
+00:00:24,000 --> 00:00:25,474
 So let's build one.
 
 11
-00:00:25,488 --> 00:00:28,415
-Mumbai to Goa, the tenth to the fourteenth
+00:00:25,524 --> 00:00:28,140
+Mumbai to Goa, a few days in
 
 12
-00:00:28,465 --> 00:00:31,020
-of November, on a mid range budget.
+00:00:28,190 --> 00:00:30,426
+November, nothing extravagant on the budget.
 
 13
-00:00:31,070 --> 00:00:33,997
-I'll add beaches and food as my interests.
+00:00:30,476 --> 00:00:32,712
+I'll tell it I'm here for
 
 14
-00:00:34,047 --> 00:00:36,973
-And budget isn't just a label here, it
+00:00:32,762 --> 00:00:34,617
+the beaches and the food.
 
 15
-00:00:37,023 --> 00:00:39,950
-changes which flights and which hotels come back.
+00:00:34,667 --> 00:00:37,283
+And that budget choice isn't just a
 
 16
+00:00:37,333 --> 00:00:39,950
+label, it genuinely changes what comes back.
+
+17
 00:00:40,000 --> 00:00:41,474
 Now watch the order.
 
-17
+18
 00:00:41,524 --> 00:00:44,902
 The globe and all the real data land first,
 
-18
+19
 00:00:44,952 --> 00:00:47,950
 before the AI has written a single word.
 
-19
+20
 00:00:48,000 --> 00:00:49,213
 Here's my trip.
 
-20
+21
 00:00:49,263 --> 00:00:52,582
 Live fares filling the left, and live hotel
 
-21
+22
 00:00:52,632 --> 00:00:55,950
 rates already sitting there waiting on the right.
 
-22
+23
 00:00:56,000 --> 00:00:58,350
 And these aren't decoration, they're bookable.
 
-23
+24
 00:00:58,400 --> 00:01:01,150
 Tap any hotel and it takes you
 
-24
+25
 00:01:01,200 --> 00:01:03,950
 straight through to the property's own site.
 
-25
-00:01:04,000 --> 00:01:06,750
-IndiGo, thirteen thousand three hundred and thirty
-
 26
-00:01:06,800 --> 00:01:09,550
-rupees, non stop, an hour fifteen, and
+00:01:04,000 --> 00:01:05,405
+Look at the flights.
 
 27
-00:01:09,600 --> 00:01:11,950
-even the carbon estimate is real.
+00:01:05,455 --> 00:01:08,677
+These are real fares, live right now, with the
 
 28
+00:01:08,727 --> 00:01:11,950
+airline, the timings, even the carbon each one burns.
+
+29
 00:01:12,000 --> 00:01:14,897
 Then where to eat, pulled from Google
 
-29
+30
 00:01:14,947 --> 00:01:17,845
 Local, with the ratings and the price
 
-30
+31
 00:01:17,895 --> 00:01:19,950
 bands people actually left there.
 
-31
+32
 00:01:20,000 --> 00:01:23,150
 Best time to visit, the planner's own reasoning,
 
-32
+33
 00:01:23,200 --> 00:01:26,350
 and recent news about Goa so you know
 
-33
+34
 00:01:26,400 --> 00:01:29,150
 what you're walking into before you go.
 
-34
+35
 00:01:29,200 --> 00:01:31,150
 And then the days themselves.
 
-35
+36
 00:01:31,200 --> 00:01:33,550
 Day one is the Northern Coast
 
-36
+37
 00:01:33,600 --> 00:01:35,950
 Heritage Trail, opening at Sinquerim Fort.
 
-37
+38
 00:01:36,000 --> 00:01:38,859
 And here's the part I care about most.
 
-38
+39
 00:01:38,909 --> 00:01:41,041
 The places are grouped by geography
 
-39
+40
 00:01:41,091 --> 00:01:43,223
 before the AI ever sees them.
 
-40
+41
 00:01:43,273 --> 00:01:46,132
 Distances come from the Haversine formula, and the
 
-41
+42
 00:01:46,182 --> 00:01:49,041
 days are built with greedy clustering, so you're
 
-42
+43
 00:01:49,091 --> 00:01:51,950
 never crossing Goa twice in a single day.
 
-43
-00:01:52,000 --> 00:01:55,550
+44
+00:01:52,000 --> 00:01:55,462
 The advisories are real articles too, so you can
 
-44
-00:01:55,600 --> 00:01:58,750
+45
+00:01:55,512 --> 00:01:58,584
 tap one and read the original story yourself.
 
-45
-00:01:58,800 --> 00:02:01,950
-And back on the plan, the globe is
-
 46
-00:02:02,000 --> 00:02:05,150
-tracing the route I'm actually flying, Mumbai to
+00:01:58,634 --> 00:02:02,096
+And then we're back on the plan, with the
 
 47
-00:02:05,200 --> 00:02:07,950
-Goa, five hundred and seventy seven kilometres.
+00:02:02,146 --> 00:02:05,218
+globe tracing the exact route I'd be flying.
 
 48
+00:02:05,268 --> 00:02:07,950
+It's a fair way down the coast.
+
+49
 00:02:08,000 --> 00:02:10,859
 Where I'm staying anchors every single route, and
 
-49
+50
 00:02:10,909 --> 00:02:13,768
 once I'm happy with all of it, I
 
-50
+51
 00:02:13,818 --> 00:02:15,950
 approve the plan and it saves.
 
-51
+52
 00:02:16,000 --> 00:02:18,822
 Every trip then lands in my history.
 
-52
+53
 00:02:18,872 --> 00:02:22,104
 I can filter it, sort it, favourite the
 
-53
+54
 00:02:22,154 --> 00:02:25,386
 ones I loved, and if I end up
 
-54
+55
 00:02:25,436 --> 00:02:28,668
 cancelling a trip, it asks me why and
 
-55
+56
 00:02:28,718 --> 00:02:31,950
 keeps that reason on record for next time.
 
-56
+57
 00:02:32,000 --> 00:02:34,750
 Out on the road, every stop carries
 
-57
+58
 00:02:34,800 --> 00:02:37,550
 its own directions, and I just tick
 
-58
+59
 00:02:37,600 --> 00:02:39,950
 each one off as I go.
 
-59
-00:02:40,000 --> 00:02:42,037
+60
+00:02:40,000 --> 00:02:41,870
 And I can hand the whole
 
-60
-00:02:42,087 --> 00:02:44,124
-thing over as a QR code.
-
 61
-00:02:44,174 --> 00:02:46,211
-Six hundred and sixty nine characters,
+00:02:41,920 --> 00:02:43,790
+plan over as a QR code.
 
 62
-00:02:46,261 --> 00:02:47,950
-no database, no server anywhere.
+00:02:43,840 --> 00:02:46,030
+It all lives in the link itself,
 
 63
+00:02:46,080 --> 00:02:47,950
+so there's no database behind it.
+
+64
 00:02:48,000 --> 00:02:50,733
 My friend scans it, and because it re
 
-64
+65
 00:02:50,783 --> 00:02:53,515
 routes around wherever they're staying, they get a
 
-65
+66
 00:02:53,565 --> 00:02:55,950
 completely different plan from the same places.
