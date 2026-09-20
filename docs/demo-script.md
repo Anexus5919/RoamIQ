@@ -3,7 +3,7 @@
 Written to match the recorded take: **175.98 seconds, 1920x1080**, light theme
 for the app, dark theme for My Trips and the shared plan.
 
-460 words at **157 words per minute**, written to run continuously. There are
+456 words at **155 words per minute**, written to run continuously. There are
 no silent gaps: every line hands straight to the next, and the last one lands at
 175.95 of 175.98 seconds. Subtitles with matching timecodes are in
 `demo-subtitles.srt`.
@@ -23,10 +23,10 @@ sit on the footage without re-cutting.
 > It starts with inspiration. These are live destinations out of Mumbai, each one showing what a flight actually costs today.
 
 **0:16 — About the Project modal**
-> And all of this is coming from SerpApi. That's the whole point, the AI never invents a price or a place name.
+> Seven SerpApi engines feed this app, and that matters, because the AI never invents a price or a place name.
 
 **0:24 — Filling the form**
-> So let's build one. Mumbai to Goa, a few days in November, nothing extravagant on the budget. I'll tell it I'm here for the beaches and the food. And that budget choice isn't just a label, it genuinely changes what comes back.
+> So let's build one. Mumbai to Goa, the tenth to the fourteenth of November, on a mid range budget. I'll add beaches and food as my interests. And budget isn't just a label here, it changes which flights and which hotels come back.
 
 **0:40 — Globe and generation**
 > Now watch the order. The globe and all the real data land first, before the AI has written a single word.
@@ -50,7 +50,7 @@ sit on the footage without re-cutting.
 > And here's the part I care about most. The places are grouped by geography before the AI ever sees them. Distances come from the Haversine formula, and the days are built with greedy clustering, so you're never crossing Goa twice in a single day.
 
 **1:52 — News article, then the globe again**
-> The advisories are real articles too, so you can tap one and read the original story yourself. And then we're back on the plan, with the globe tracing the exact route I'd be flying. It's a fair way down the coast.
+> The advisories are real articles too, so you can tap one and read the original story yourself. And back on the plan, the globe is tracing the route I'm actually flying, Mumbai to Goa, five hundred and seventy seven kilometres.
 
 **2:08 — Where You Are Staying, then approving**
 > Where I'm staying anchors every single route, and once I'm happy with all of it, I approve the plan and it saves.
@@ -62,7 +62,7 @@ sit on the footage without re-cutting.
 > Out on the road, every stop carries its own directions, and I just tick each one off as I go.
 
 **2:40 — QR dialog**
-> And I can hand the whole plan over as a QR code. It all lives in the link itself, so there's no database behind it.
+> And I can hand the whole thing over as a QR code. Six hundred and sixty nine characters, no database, no server anywhere.
 
 **2:48 — Shared plan, then the phone**
 > My friend scans it, and because it re routes around wherever they're staying, they get a completely different plan from the same places.
@@ -83,11 +83,11 @@ sit on the footage without re-cutting.
   Slow down on both.
 - **1:36 is the moment that wins the judging.** It is the only place you claim
   real engineering. Do not rush it.
-- **There are no figures to recite, on purpose.** The fares, the distances and
-  the character count are all on screen already, and reading them out loud is
-  what made the earlier draft sound machine-written. Point at what the viewer
-  can see instead: "these are real fares, live right now". If a judge wants the
-  number, it is in front of them.
+- Numbers read aloud, not as digits: "six hundred and sixty nine", "five
+  hundred and seventy seven".
+- The flight line deliberately does **not** recite the fare. It is large on
+  screen at that moment, and reading it out was what made the line sound
+  machine-written. Point at it instead.
 
 ---
 
@@ -103,9 +103,9 @@ sit on the footage without re-cutting.
 | QR | 669 characters, no server involved |
 | Shared plan | 12 places, 4 days |
 
-These are for your reference only. **None of them appear in the narration.**
-Rates and fares move between runs, so quoting any of them would date the video
-and invite a mismatch between what you say and what is on screen.
+Hotel rates in this take are not the ones from earlier runs, because Google
+Hotels returned fresher inventory. Do not quote a hotel price in the narration.
+The lines above deliberately avoid naming one.
 
 ---
 
