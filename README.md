@@ -34,11 +34,43 @@ Every number a user sees — every fare, nightly rate, rating and review count �
 | `google_maps` | Geocodes origin and destination for the 3D globe |
 | `google_hotels` | Nightly rates, star class, ratings, deals and photos |
 | `google_maps_directions` | Road distance and drive time between origin and destination |
-| `google_local` | Highly rated restaurants and attractions at the destination |
+| `google_local` | Rated restaurants and attractions, **with coordinates** — this is what makes geographic day planning possible |
 | `google_news` | "Before You Go" advisories and recent destination coverage |
 | `google_travel_explore` | The Trip Inspiration page — live destinations and fares by origin |
 
-All calls funnel through [`lib/serpapi.js`](lib/serpapi.js), which adds a TTL cache so repeat lookups don't burn search credits.
+All calls funnel through [`lib/serpapi.js`](lib/serpapi.js), which adds a per-engine TTL cache, persisted to disk, so repeat lookups don't burn search credits. `npm run cache` shows what is cached and your remaining balance.
+
+---
+
+## 🧭 How the day planner works
+
+A language model has no spatial reasoning. Ask one to sequence stops and it produces days
+that bounce across the city — a morning in the north, an afternoon in the far south, and an
+hour lost to travel in between.
+
+So RoamIQ does not let it. **Routing is arithmetic, and it is solved in code before the model
+sees anything.** Everything in [`lib/itinerary-planner.js`](lib/itinerary-planner.js) is pure
+maths: no API calls, no credits.
+
+1. **Shortlist** the attractions worth visiting, scored on rating and distance from the hotel.
+2. **Cluster into days** with a capacitated greedy pass. Each day is seeded with the furthest
+   unvisited place, then pulls in its nearest neighbours, and stops growing once the next one
+   is beyond a 12 km radius. Leftover pockets are merged by nearest centroid until the count
+   matches the number of days.
+3. **Order within the day** by nearest neighbour from the hotel, the standard cheap
+   approximation to the travelling salesman problem.
+4. **Measure every leg** with the Haversine formula, giving the distance and compass bearing
+   shown on each stop.
+
+The model then receives a finished route and is told not to reorder it. It writes the day
+titles and the stop descriptions, nothing else.
+
+> Plain k-means was evaluated and rejected: it gives geographically tight clusters but wildly
+> unbalanced days, one with nine stops and another with one.
+
+**Where you sleep anchors everything.** Change hotel and the whole trip re-clusters instantly,
+client side, with no API call. Staying somewhere the app never suggested? Check in on arrival
+and it uses your device's real coordinates.
 
 ---
 
@@ -68,6 +100,26 @@ All calls funnel through [`lib/serpapi.js`](lib/serpapi.js), which adds a TTL ca
 - **shadcn/ui components** for consistent design
 - **Lucide React icons** throughout
 
+### 🗓️ **Plan, edit, approve**
+- **Geographic day routing** so each day stays in one pocket of the city
+- **Drag any stop** to reorder it or move it to another day, distances recompute on drop
+- **Hotel anchors the route** — change it and the trip re-clusters instantly
+- **Staying elsewhere?** Check in on arrival and it uses your real coordinates
+- **Approve to save**, reopen to edit at any point, including mid-trip
+
+### 🧳 **On the road and afterwards**
+- **Get directions** opens real Google Maps turn-by-turn for any stop
+- **Check in** at a stop, then mark it done and it strikes off the list
+- **Trip history** across upcoming, in progress, completed and cancelled
+- **Cancel with a reason** that stays on record, and reinstate if plans change back
+- **Favourite trips** with a heart, and filter to just those
+- **Filter and sort** by status, date, destination, stop count or progress
+
+### 🔗 **Share without a backend**
+- **QR code sharing** — the whole plan is compressed into the link itself
+- **No database, no account**, the itinerary never touches a server
+- **Recipients re-anchor** on their own hotel, so they get a different route from the same places
+
 ### 📱 **Smart Features**
 - **Suggested trips** discovered live, with real fares by departure city
 - **Plan new trip** directly from itinerary page
@@ -86,6 +138,8 @@ All calls funnel through [`lib/serpapi.js`](lib/serpapi.js), which adds a TTL ca
 - **shadcn/ui** - Component library
 - **Lucide React** - Icon system
 - **react-globe.gl** - 3D globe visualization
+- **dnd-kit** - Drag and drop for reordering stops, with touch and keyboard support
+- **qrcode** - Renders the shareable plan as a scannable code
 
 ### **Backend & APIs**
 - **SerpApi** - Live flights, hotels, directions, places, news and destinations
@@ -95,8 +149,14 @@ All calls funnel through [`lib/serpapi.js`](lib/serpapi.js), which adds a TTL ca
 
 ### **State Management & Utilities**
 - **Context API** - Global state management
+- **localStorage** - Approved trips and their history, no account required
 - **next-themes** - Theme management
 - **date-fns** - Date manipulation
+
+### **No database**
+Trip history lives in the browser and shared plans travel inside the URL, so there is nothing
+to provision, no connection string, and one fewer thing to break. See
+[`lib/trip-store.js`](lib/trip-store.js) and [`lib/trip-share.js`](lib/trip-share.js).
 
 ---
 
@@ -185,15 +245,21 @@ RoamIQ/
 │   │
 │   ├── components/            # React Components
 │   │   ├── ui/               # shadcn/ui components
+│   │   ├── CancelTripDialog.jsx   # Cancel with a reason
 │   │   ├── ChainOfThoughtDisplay.jsx
+│   │   ├── DayRoutePlanner.jsx    # Day cards, drag and drop, live distances
 │   │   ├── FlightOptions.jsx      # Live fares from Google Flights
 │   │   ├── GlobeDisplay.jsx
+│   │   ├── HotelAnchorPicker.jsx  # Choose the hotel every route is measured from
 │   │   ├── HotelSuggestions.jsx   # Live rates from Google Hotels
 │   │   ├── ItineraryDisplay.jsx
 │   │   ├── ItineraryForm.jsx
 │   │   ├── LocalDining.jsx        # Restaurants from Google Local
 │   │   ├── Navbar.jsx
+│   │   ├── ShareTripDialog.jsx    # QR code for the plan
+│   │   ├── StopCard.jsx           # One stop: distance, directions, check-in
 │   │   ├── TravelAdvisory.jsx     # Destination news
+│   │   ├── TripApproval.jsx       # Review, edit, approve
 │   │   └── ...
 │   │
 │   ├── context/              # React Context
@@ -205,6 +271,12 @@ RoamIQ/
 │   ├── suggestions/          # Suggested trips page
 │   │   └── page.jsx
 │   │
+│   ├── trips/                # Saved trips and history
+│   │   └── page.jsx
+│   │
+│   ├── shared/               # A plan opened from someone else's QR code
+│   │   └── page.jsx
+│   │
 │   ├── layout.js             # Root layout
 │   ├── page.js               # Landing page
 │   ├── providers.jsx         # Context providers
@@ -212,7 +284,17 @@ RoamIQ/
 │
 ├── lib/                      # Utility functions
 │   ├── serpapi.js            # SerpApi client + TTL cache (all live data)
+│   ├── itinerary-planner.js  # Haversine, clustering, routing (pure maths)
+│   ├── trip-store.js         # Saved trips, status, favourites, cancellations
+│   ├── trip-share.js         # Packs a plan into a QR-sized URL
 │   └── utils.js              # Helper utilities
+│
+├── scripts/
+│   └── cache.mjs             # npm run cache — inspect cached searches + credits
+│
+├── docs/
+│   ├── demo-script.md        # Narration for the demo video
+│   └── demo-subtitles.srt    # Timed subtitles
 │
 ├── public/                   # Static assets
 │
@@ -289,8 +371,10 @@ ItineraryContext
 
 #### **Page Flow**
 1. **`/`** (Landing) → User fills form → Navigate to `/itinerary`
-2. **`/itinerary`** → Fetch AI data → Display results
+2. **`/itinerary`** → Live data renders, then the AI plan → Review, edit, approve
 3. **`/suggestions`** → Browse live destinations by origin → Select → Auto-fill form
+4. **`/trips`** → Saved plans, filters, favourites, check-ins, cancellations, QR sharing
+5. **`/shared#<plan>`** → Someone else's plan, re-clustered around where you are staying
 
 #### **API Integration**
 - **SerpApi**: Flights, hotels, directions, restaurants, attractions, news and destination discovery
@@ -313,13 +397,41 @@ ItineraryContext
    - **Transport:** Flight, Train, Car, or Any
    - **Interests:** Add tags (food, history, art, etc.)
 3. **Click "Build My Itinerary"**
-4. **Watch the AI generate** your plan in real-time
-5. **View results:** Globe visualization, weather, hotels, and day-by-day itinerary
+4. **Watch the order it arrives in.** Real flights, hotels and the globe render first, then
+   the AI writes the plan around them
+5. **View results:** globe, weather, live flights and hotels, restaurants, destination news,
+   and the day-by-day route
+
+### **Making the plan yours**
+
+1. Under **Where You Are Staying**, pick the hotel you actually booked. The whole trip
+   re-clusters around it, instantly and with no API call
+2. Staying somewhere that was not suggested? Choose **I am staying somewhere else**, then tap
+   **I have checked in here** once you arrive to anchor on your real position
+3. Click **Make changes** and drag any stop to reorder it or move it to another day. Every
+   distance recalculates on drop
+4. Click **Approve this plan** to save it
+
+### **While you travel**
+
+1. Open the trip from **My Trips**
+2. **Get directions** on any stop opens Google Maps turn-by-turn
+3. Tap **I'm here** when you arrive, then **Done, next stop** to strike it off
+4. The trip marks itself completed once the last stop is checked
+
+### **History and sharing**
+
+1. **My Trips** lists everything: upcoming, in progress, completed and cancelled
+2. Filter by status, sort by date, destination, stop count or progress
+3. Tap the heart to favourite a trip, then **Show favourites** to see only those
+4. **Cancel this trip** asks why, and keeps the reason on record. **Reinstate** undoes it
+5. The **QR icon** turns the plan into a scannable code. Whoever opens it gets the same places
+   re-routed around where *they* are staying
 
 ### **Using Suggested Trips**
 
 1. Click **"I'm Feeling Lucky"** on the landing page
-2. Browse curated destinations (Kyoto, Rome, Paris, etc.)
+2. Browse live destinations with real fares, and switch departure city
 3. Click any card to auto-fill the form with that destination
 
 ### **Planning Another Trip**
@@ -341,6 +453,7 @@ Create a `.env.local` file with these variables:
 | `TOMTOM_API_KEY` | Geocoding fallback if SerpApi returns nothing | ⚠️ Optional | - |
 | `OPENWEATHER_API_KEY` | OpenWeather API key for forecasts | ✅ Yes | - |
 | `GROQ_MODEL` | Override the Groq model | ⚠️ Optional | `openai/gpt-oss-120b` |
+| `NEXT_PUBLIC_SHARE_ORIGIN` | Origin the share QR points at. Leave unset in production. Set it when running locally, because a QR encoding `localhost` cannot be opened from a phone | ⚠️ Optional | current origin |
 
 ---
 
@@ -383,9 +496,10 @@ Set the four environment variables above in your host's dashboard.
 
 ---
 
-## 🎓 Developed For
+## 🎓 Built For
 
-**Gradguide by Computrain**
+**SerpApi India Hackathon 2026**
+Travel & Local Discovery track
 
 ---
 
